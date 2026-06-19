@@ -1,0 +1,2630 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestión MP 2026 · Equipamiento Clínico HHHA</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#eef1f0; --surface:#ffffff; --panel:#f7f9f8; --ink:#16262c; --muted:#5c6862; --faint:#8b958f;
+  --line:#dde3df; --line-soft:#eaeeeb;
+  --accent:#0e7c86; --accent-ink:#0a565e; --accent-tint:#e2f0ef;
+  --ok:#3f7d2f; --ok-tint:#e7f0df;
+  --warn:#b3760a; --warn-tint:#fbf0da;
+  --bad:#b3402f; --bad-tint:#fbe4df;
+  --info:#3a5fa8; --info-tint:#e4ebf7;
+  --draft:#9a6b12; --draft-tint:#f7eed8;
+  --radius:10px;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg); color:var(--ink); font-family:var(--sans);
+  font-size:14px; line-height:1.45; -webkit-font-smoothing:antialiased;
+  display:flex; flex-direction:column; height:100vh; overflow:hidden;
+}
+button{font-family:inherit; cursor:pointer}
+input,select,textarea{font-family:inherit; font-size:14px}
+
+/* ---- Top bar: search + actions (always visible) ---- */
+.topbar{
+  background:var(--surface); border-bottom:1px solid var(--line);
+  padding:8px 16px; display:flex; align-items:center; gap:14px; flex:none;
+}
+.brand{font-weight:700; font-size:15px; letter-spacing:-.01em; white-space:nowrap}
+.brand small{display:block; font-weight:500; font-size:11px; color:var(--faint); letter-spacing:.04em}
+.search{flex:1; position:relative; max-width:560px}
+.search input{
+  width:100%; padding:9px 14px 9px 34px; border:1px solid var(--line);
+  border-radius:8px; background:var(--panel); outline:none;
+}
+.search input:focus{border-color:var(--accent); background:#fff}
+.search::before{content:"⌕"; position:absolute; left:11px; top:7px; font-size:18px; color:var(--faint)}
+.topactions{display:flex; gap:6px; align-items:center; flex-wrap:wrap; justify-content:flex-end}
+.btn{
+  border:1px solid var(--line); background:var(--surface); color:var(--ink);
+  padding:7px 12px; border-radius:7px; font-size:13px; font-weight:500; white-space:nowrap;
+}
+.btn:hover{background:var(--panel)}
+.btn.primary{background:var(--accent); color:#fff; border-color:var(--accent)}
+.btn.primary:hover{background:var(--accent-ink)}
+.btn.sm{padding:4px 9px; font-size:12px}
+.btn.ghost{border-color:transparent; background:transparent}
+.btn.ghost:hover{background:var(--panel)}
+.btn[disabled]{opacity:.45; cursor:not-allowed}
+#btnRec.on{background:var(--bad); color:#fff; border-color:var(--bad); animation:recblink 1.4s ease-in-out infinite}
+@keyframes recblink{50%{opacity:.65}}
+
+/* ---- Layout ---- */
+.shell{display:flex; flex:1; min-height:0}
+.nav{
+  width:188px; background:var(--surface); border-right:1px solid var(--line);
+  padding:10px 8px; flex:none; overflow:auto; display:flex; flex-direction:column; gap:2px;
+}
+.nav button{
+  display:flex; align-items:center; gap:9px; width:100%; text-align:left;
+  border:none; background:transparent; padding:9px 11px; border-radius:7px;
+  color:var(--muted); font-size:13.5px; font-weight:500;
+}
+.nav button .ico{width:18px; text-align:center; font-size:15px}
+.nav button:hover{background:var(--panel); color:var(--ink)}
+.nav button.active{background:var(--accent-tint); color:var(--accent-ink); font-weight:600}
+.nav .navbadge{margin-left:auto; font-size:11px; background:var(--bad); color:#fff; border-radius:10px; padding:1px 7px; font-weight:600}
+.nav .navsep{height:1px; background:var(--line-soft); margin:8px 4px}
+.nav .navhint{font-size:11px; color:var(--faint); padding:4px 11px}
+
+.main{flex:1; min-width:0; overflow:auto; padding:16px 20px 40px}
+.view{max-width:1500px; margin:0 auto}
+.view h2{font-size:18px; margin:2px 0 2px; letter-spacing:-.01em}
+.viewhead{display:flex; align-items:center; gap:12px; margin-bottom:14px; flex-wrap:wrap}
+.viewhead .sub{color:var(--muted); font-size:13px}
+.spacer{flex:1}
+
+/* ---- KPI band ---- */
+.kpis{display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; margin-bottom:16px}
+.kpi{
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--radius);
+  padding:12px 14px; cursor:pointer; transition:border-color .12s;
+}
+.kpi:hover{border-color:var(--accent)}
+.kpi .k-label{font-size:11.5px; color:var(--muted); font-weight:600; letter-spacing:.02em; text-transform:uppercase}
+.kpi .k-val{font-size:26px; font-weight:700; letter-spacing:-.02em; line-height:1.1; margin-top:3px}
+.kpi .k-sub{font-size:11.5px; color:var(--faint); margin-top:2px}
+.kpi.alert .k-val{color:var(--bad)} .kpi.warn .k-val{color:var(--warn)} .kpi.ok .k-val{color:var(--ok)}
+
+/* ---- Cards ---- */
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin-bottom:14px}
+.card h3{margin:0 0 10px; font-size:14px; display:flex; align-items:center; gap:8px}
+.card h3 .count{font-size:12px; color:var(--faint); font-weight:500}
+.grid2{display:grid; grid-template-columns:1fr 1fr; gap:14px}
+@media(max-width:900px){.grid2{grid-template-columns:1fr}}
+
+/* ---- Tables ---- */
+.tablewrap{overflow:auto; border:1px solid var(--line); border-radius:var(--radius); background:var(--surface)}
+table.grid{border-collapse:collapse; width:100%; font-size:12.5px}
+table.grid th, table.grid td{padding:5px 9px; border-bottom:1px solid var(--line-soft); text-align:left; white-space:nowrap}
+table.grid thead th{
+  position:sticky; top:0; background:var(--panel); z-index:2; font-size:11.5px;
+  font-weight:600; color:var(--muted); border-bottom:1px solid var(--line); user-select:none;
+}
+table.grid thead th .th-inner{display:flex; align-items:center; gap:5px}
+table.grid thead th .sortable{cursor:pointer}
+table.grid thead th .funnel{cursor:pointer; color:var(--faint); font-size:12px; padding:0 2px; border-radius:3px}
+table.grid thead th .funnel.on{color:var(--accent); background:var(--accent-tint)}
+table.grid tbody tr:hover{background:var(--accent-tint)}
+table.grid tbody tr.clickable{cursor:pointer}
+table.grid td.num{text-align:right; font-variant-numeric:tabular-nums}
+.dense table.grid th, .dense table.grid td{padding:3px 8px}
+.mono{font-family:var(--mono); font-size:12px}
+
+/* ---- Badges ---- */
+.badge{display:inline-block; font-size:11px; font-weight:600; padding:1px 7px; border-radius:11px; line-height:1.5; white-space:nowrap}
+.b-ok{background:var(--ok-tint); color:var(--ok)}
+.b-warn{background:var(--warn-tint); color:var(--warn)}
+.b-bad{background:var(--bad-tint); color:var(--bad)}
+.b-info{background:var(--info-tint); color:var(--info)}
+.b-draft{background:var(--draft-tint); color:var(--draft)}
+.b-neutral{background:var(--panel); color:var(--muted); border:1px solid var(--line)}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:5px;vertical-align:middle}
+
+/* ---- Filter bar ---- */
+.filterbar{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px}
+.filterbar select, .filterbar input{
+  padding:6px 9px; border:1px solid var(--line); border-radius:7px; background:var(--surface);
+}
+.chip-x{background:var(--accent-tint); color:var(--accent-ink); border:1px solid transparent;
+  border-radius:14px; padding:3px 10px; font-size:12px; font-weight:500; display:inline-flex; gap:6px; align-items:center}
+.chip-x button{border:none; background:transparent; color:var(--accent-ink); font-weight:700; padding:0; line-height:1}
+
+/* ---- Funnel dropdown ---- */
+.funnelmenu{
+  position:absolute; z-index:50; background:var(--surface); border:1px solid var(--line);
+  border-radius:8px; box-shadow:0 8px 30px rgba(0,0,0,.14); padding:8px; min-width:200px; max-height:340px; overflow:auto;
+}
+.funnelmenu .fm-search{width:100%; margin-bottom:6px; padding:5px 8px; border:1px solid var(--line); border-radius:6px}
+.funnelmenu label{display:flex; gap:7px; align-items:center; padding:3px 4px; font-size:12.5px; border-radius:5px}
+.funnelmenu label:hover{background:var(--panel)}
+.funnelmenu .fm-actions{display:flex; gap:6px; margin-top:7px; border-top:1px solid var(--line-soft); padding-top:7px}
+
+/* ---- Drawer / panel for forms & ficha ---- */
+.drawer-back{position:fixed; inset:0; background:rgba(20,30,34,.32); z-index:80; display:none}
+.drawer-back.open{display:block}
+.drawer{
+  position:fixed; top:0; right:0; height:100vh; width:min(720px,96vw); background:var(--bg);
+  z-index:90; transform:translateX(100%); transition:transform .18s ease; display:flex; flex-direction:column;
+  box-shadow:-8px 0 40px rgba(0,0,0,.18);
+}
+.drawer.open{transform:none}
+.drawer-head{
+  background:var(--surface); border-bottom:1px solid var(--line); padding:12px 18px;
+  display:flex; align-items:center; gap:10px; flex:none;
+}
+.drawer-head h3{margin:0; font-size:16px; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis}
+.drawer-body{overflow-y:auto; overflow-x:hidden; padding:16px 18px 60px; flex:1; min-width:0}
+/* Ficha responsiva: sin scroll horizontal — el contenido se adapta al ancho */
+.drawer-body table.grid td, .drawer-body table.grid th{white-space:normal; word-break:break-word}
+.drawer-body .tablewrap{overflow-x:auto; max-width:100%}
+.drawer-body .kv{grid-template-columns:minmax(120px,auto) 1fr}
+.drawer-body .kv dd{word-break:break-word; min-width:0}
+.drawer-body .copybox{white-space:pre-wrap; word-break:break-word}
+
+/* ---- Forms ---- */
+.field{margin-bottom:12px}
+.field label{display:block; font-size:12px; font-weight:600; color:var(--muted); margin-bottom:4px}
+.field input, .field select, .field textarea{
+  width:100%; padding:8px 10px; border:1px solid var(--line); border-radius:7px; background:var(--surface); outline:none;
+}
+.field input:focus, .field select:focus, .field textarea:focus{border-color:var(--accent)}
+.field textarea{min-height:64px; resize:vertical}
+.field .hint{font-size:11.5px; color:var(--faint); margin-top:3px}
+.frow{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+.frow3{display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px}
+@media(max-width:620px){.frow,.frow3{grid-template-columns:1fr}}
+.formsection{border-top:1px solid var(--line-soft); margin-top:8px; padding-top:12px}
+.formsection h4{margin:0 0 10px; font-size:13px; color:var(--accent-ink)}
+.check{display:flex; gap:8px; align-items:center; font-size:13.5px; margin-bottom:8px}
+.check input{width:auto}
+
+/* ---- Timeline (ficha) ---- */
+.timeline td .tl-ico{font-size:14px}
+.tl-mp{color:var(--ok)} .tl-pend{color:var(--warn)} .tl-corr{color:var(--accent)}
+
+/* ---- Seguimiento / bitácora ---- */
+.bitacora{border:1px solid var(--line); border-radius:8px; background:var(--panel); padding:8px 10px}
+.bitacora .entry{padding:6px 0; border-bottom:1px dashed var(--line); font-size:13px}
+.bitacora .entry:last-child{border-bottom:none}
+.bitacora .entry .when{font-size:11px; color:var(--faint); font-weight:600}
+.bita-add{display:flex; gap:6px; margin-top:8px}
+.bita-add input{flex:1}
+
+/* tasks */
+.tasklist{list-style:none; padding:0; margin:6px 0}
+.tasklist li{display:flex; gap:8px; align-items:center; padding:4px 0; font-size:13px}
+
+/* misc */
+.muted{color:var(--muted)} .faint{color:var(--faint)} .small{font-size:12px}
+.right{text-align:right} .center{text-align:center}
+.empty{padding:40px 20px; text-align:center; color:var(--faint)}
+.empty .big{font-size:34px; margin-bottom:8px; opacity:.5}
+.pill{font-size:11px; background:var(--panel); border:1px solid var(--line); border-radius:20px; padding:2px 9px; color:var(--muted)}
+.toast{position:fixed; bottom:18px; left:50%; transform:translateX(-50%); background:var(--ink); color:#fff;
+  padding:10px 18px; border-radius:8px; font-size:13.5px; z-index:200; box-shadow:0 8px 30px rgba(0,0,0,.25); opacity:0; transition:opacity .2s, transform .2s}
+.toast.show{opacity:1; transform:translateX(-50%) translateY(-4px)}
+.colsel{max-height:300px; overflow:auto}
+.copybox{width:100%; min-height:120px; font-family:var(--mono); font-size:12px; white-space:pre; padding:10px; border:1px solid var(--line); border-radius:8px}
+.heatcell{cursor:pointer; text-align:center; font-variant-numeric:tabular-nums}
+.heatcell:hover{outline:2px solid var(--accent); outline-offset:-2px}
+.legend{display:flex; gap:14px; flex-wrap:wrap; font-size:12px; color:var(--muted); margin-top:8px}
+.legend span{display:inline-flex; align-items:center; gap:5px}
+.banner{padding:10px 14px; border-radius:8px; margin-bottom:12px; font-size:13px; display:flex; gap:10px; align-items:center}
+.banner.warn{background:var(--warn-tint); color:var(--warn)}
+.banner.info{background:var(--info-tint); color:var(--info)}
+.banner .spacer{flex:1}
+.tag-row{display:flex; gap:6px; flex-wrap:wrap; align-items:center}
+hr.soft{border:none; border-top:1px solid var(--line-soft); margin:14px 0}
+.kv{display:grid; grid-template-columns:auto 1fr; gap:4px 14px; font-size:13px}
+.kv dt{color:var(--muted); font-weight:600}
+.kv dd{margin:0}
+.fileinput{display:none}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="brand">Gestión MP 2026<small>Equipamiento Clínico HHHA</small></div>
+  <div class="search">
+    <input id="globalSearch" type="search" placeholder="Buscar equipo (inventario, nombre, serie, servicio…) · / para enfocar · Enter abre si hay 1 resultado" autocomplete="off">
+  </div>
+  <div class="topactions">
+    <button class="btn primary" id="btnLoadXlsm">Cargar .xlsm</button>
+    <button class="btn" id="btnBackupNow" title="Exporta respaldo JSON (reimportable) + libro Excel">Respaldar ahora</button>
+    <button class="btn" id="btnRec" title="Grabación de uso activa: registra navegación, búsquedas, filtros y acciones (con marca de tiempo) y se incluye en el respaldo, para analizar cómo usas la app y proponer mejoras. Clic para pausar.">● Grabando</button>
+    <button class="btn" id="btnMenu">Más ▾</button>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="nav" id="nav"></nav>
+  <main class="main"><div class="view" id="view"></div></main>
+</div>
+
+<!-- hidden file inputs -->
+<input type="file" id="fileXlsm" class="fileinput" accept=".xlsm,.xlsx">
+<input type="file" id="fileJson" class="fileinput" accept=".json">
+<input type="file" id="fileOldBackup" class="fileinput" accept=".json">
+<input type="file" id="fileIntegrado" class="fileinput" accept=".xlsx">
+<input type="file" id="fileConsolidado" class="fileinput" accept=".xlsx" multiple>
+
+<!-- drawer -->
+<div class="drawer-back" id="drawerBack"></div>
+<aside class="drawer" id="drawer">
+  <div class="drawer-head">
+    <h3 id="drawerTitle">—</h3>
+    <button class="btn ghost" id="drawerClose">✕</button>
+  </div>
+  <div class="drawer-body" id="drawerBody"></div>
+</aside>
+
+<div class="toast" id="toast"></div>
+
+<script>
+"use strict";
+/* ============================================================================
+   Gestión MP 2026 — centro de control operacional (single-file, vanilla JS)
+   Fuente de datos: ProgramaciónMP2026.xlsm (solo lectura).
+   Persistencia: IndexedDB + localStorage. Ver docs/ para la especificación.
+   ========================================================================== */
+
+/* ----------------------------- Constantes -------------------------------- */
+const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+const MESES_LARGO = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+
+const PROG_CODES = { X:"Programada", R:"Reprogramada", RA:"Reprog. año anterior", PM:"Puesta en marcha" };
+const RESULTADOS = {
+  "Si":"Realizada", "Si-RA":"Año anterior realizada",
+  "C1":"Reprog. C1","C2":"Reprog. C2","C3":"Reprog. C3","C4":"Reprog. C4",
+  "C5":"Reprog. C5","C6":"Reprog. C6","C7":"Reprog. C7","C8":"Reprog. C8",
+  "FS":"Fuera de servicio","No":"No realizada","NU":"No ubicable","Baja":"Dado de baja"
+};
+const CAUSALES = {
+  C1:"No se puede desocupar el equipo del paciente (indicación clínica)",
+  C2:"Equipo en servicio técnico",
+  C3:"Equipo no operativo, espera repuestos/accesorios",
+  C4:"Equipo en préstamo a otro hospital",
+  C5:"Sin HH del funcionario SEC (alta carga)",
+  C6:"Sin HH del servicio técnico externo",
+  C7:"Ausencia justificada del funcionario SEC > 15 días",
+  C8:"Contingencia hospitalaria"
+};
+const REPRO_30DIAS = new Set(["C1","C5","C6","C7","C8"]);
+const REPRO_SIN_FECHA = new Set(["C2","C3","C4"]);
+
+const EJECUTORES = [
+  "Carlos Bahamondes Seguel","Cristián Beltrán Oviedo","Cristina Rozas Urrutia","Daniel Díaz Neira",
+  "Ignacio Berner Bergara","Macarena Toledo","Marco Ulloa","Matías Soazo Garrido",
+  "Ricardo Matus Aroca","Tito Millapán Riquelme","Personal Externo"
+];
+const RESP_ADMIN_DEFAULT = "Cristián Beltrán Oviedo";
+
+const ESTADOS_EQUIPO = ["Operativo","No Operativo","Servicio Técnico","Préstamo","No Ubicable","Baja"];
+
+// Tipos de pendiente (5 tipos / 3 orígenes)
+const PEND_TIPOS = {
+  documental:        { label:"Documental",        origen:"correctivo" },
+  protocolo_interno: { label:"Protocolo interno",  origen:"preventiva" },
+  protocolo_externo: { label:"Protocolo externo",  origen:"preventiva" },
+  reprogramacion:    { label:"Reprogramación MP",  origen:"preventiva" },
+  otro:              { label:"Otro",               origen:"administrativo" }
+};
+
+// Columnas A–S (0-based) en ambas hojas (Q=16 y S=18 se excluyen)
+const COL = {
+  fam:0, idPlanilla:1, carpeta:2, inventario:3, equipo:4, servicio:5, unidad:6, ubicacion:7,
+  procedencia:8, marca:9, modelo:10, serie:11, anio:12, vidaUtil:13, clasif:14, enuBaja:15,
+  /* Q=16 EXCLUIR */ frecuencia:17 /* S=18 EXCLUIR */
+};
+// PMP_2026: meses Ene..Dic = índices 19..30 (T..AE)
+const PMP_MES0 = 19;
+// Registro_MP-2026: pares P/R por mes; P[m]=19+2m (T..), R[m]=20+2m (U..); AR=43 (ignorar lo posterior)
+const REG_P0 = 19, REG_R0 = 20;
+// Letra de la subcolumna R por mes (para el panel "Por volcar al .xlsm")
+const REG_R_COL_LETTER = ["U","W","Y","AA","AC","AE","AG","AI","AK","AM","AO","AQ"];
+
+/* ----------------------------- Estado global ----------------------------- */
+let state = {
+  equipos: [], registros: [], detalleMP: [], pendientes: [], correctivos: [],
+  empresas: [], ingenieros: [], meta: null
+};
+let prefs = { columnasEquipos: null, ultimoEjecutor:"", ultimoTipoMant:"Interno", ultimaEmpresa:"", ultimoIngeniero:"" };
+let ui = {
+  view: "tablero",
+  search: "",
+  // equipos view
+  sortCol: null, sortDir: 0, // 0 none,1 asc,2 desc
+  headerFilters: {}, // {field:Set(values)}
+  quick: { familia:"", servicio:"", estado:"", mes:"" },
+};
+let fichaReturnKey = null; // contexto: ficha a la que volver tras cerrar un editor
+let dirtySinceBackup = false;
+let backupDirHandle = null; // File System Access API
+let changesSinceFolderSave = 0;
+
+/* Grabación de uso: bitácora de navegación/acciones con marca de tiempo.
+   Siempre activa por defecto (buffer rotativo) para que el respaldo capture el
+   uso real y poder analizarlo y proponer mejoras. El botón pausa/reanuda. */
+let usageLog = [];
+let recording = true;
+let _lastLoggedView = null;
+function recordEvent(type, detail){
+  if(!recording) return;
+  usageLog.push({ t:new Date().toISOString(), view:ui.view, type, detail:String(detail==null?"":detail).replace(/\s+/g," ").trim().slice(0,160) });
+  if(usageLog.length>6000) usageLog.splice(0, usageLog.length-6000);
+}
+function toggleRecording(){
+  if(!recording){ recording=true; _lastLoggedView=null; recordEvent("session","▶ Reanudada"); toast("Grabación de uso reanudada."); }
+  else { recordEvent("session","⏸ Pausada"); recording=false; toast(`Grabación pausada — ${usageLog.length} eventos.`); persistUsuario(); }
+  syncRecBtn();
+}
+function syncRecBtn(){ const b=document.getElementById("btnRec"); if(!b) return;
+  b.classList.toggle("on",recording); b.textContent = recording? "● Grabando ("+usageLog.length+")" : "▶ Reanudar grabación"; }
+function downloadUsageLog(){
+  if(!usageLog.length){ toast("No hay grabación que descargar."); return; }
+  download(`grabacion-uso-MP2026-${todayISO()}.json`, JSON.stringify({ tipo:"grabacion-uso-gmp2026", fecha:new Date().toISOString(), entorno:entornoSesion(), resumen:resumenUso(), eventos:usageLog }, null, 2));
+}
+function clearUsageLog(){ if(!usageLog.length){ toast("Nada que borrar."); return; } if(confirm("¿Borrar la grabación de uso ("+usageLog.length+" eventos)?")){ usageLog=[]; persistUsuario(); syncRecBtn(); toast("Grabación borrada."); } }
+function entornoSesion(){ return { pantalla:`${window.innerWidth}×${window.innerHeight}`, agente:navigator.userAgent, version:"v3",
+  datos:{ equipos:state.equipos.length, mantenciones:state.detalleMP.length, pendientes:state.pendientes.length, correctivos:state.correctivos.length } }; }
+function resumenUso(){
+  const porTipo={}, porVista={};
+  for(const e of usageLog){ porTipo[e.type]=(porTipo[e.type]||0)+1; if(e.view)porVista[e.view]=(porVista[e.view]||0)+1; }
+  return { eventos:usageLog.length, desde:usageLog[0]?.t, hasta:usageLog[usageLog.length-1]?.t, porTipo, porVista };
+}
+
+/* ------------------------------ Utilidades ------------------------------- */
+const $ = (s,r=document)=>r.querySelector(s);
+const $$ = (s,r=document)=>Array.from(r.querySelectorAll(s));
+const uid = ()=> Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+const todayISO = ()=>{ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`; };
+function esc(s){ return (s==null?"":String(s)).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[c])); }
+function el(tag, attrs={}, ...kids){
+  const e=document.createElement(tag);
+  for(const k in attrs){
+    if(k==="class") e.className=attrs[k];
+    else if(k==="html") e.innerHTML=attrs[k];
+    else if(k.startsWith("on")&&typeof attrs[k]==="function") e.addEventListener(k.slice(2),attrs[k]);
+    else if(attrs[k]!=null&&attrs[k]!==false) e.setAttribute(k,attrs[k]);
+  }
+  for(const kid of kids.flat()){ if(kid==null||kid===false) continue;
+    e.appendChild(typeof kid==="object"?kid:document.createTextNode(String(kid))); }
+  return e;
+}
+function fmtDate(iso){ if(!iso) return ""; const d=String(iso).slice(0,10); const p=d.split("-"); return p.length===3?`${p[2]}-${p[1]}-${p[0]}`:d; }
+function daysBetween(a,b){ if(!a||!b) return null; return Math.round((new Date(b)-new Date(a))/86400000); }
+function daysFromToday(iso){ if(!iso) return null; return Math.round((new Date(todayISO())-new Date(String(iso).slice(0,10)))/86400000); }
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove("show"),2600);
+  recordEvent(/error|no se|inválid|obligator|⚠/i.test(msg)?"error":"aviso", msg); }
+function download(filename, content, mime="application/json"){
+  const blob = content instanceof Blob ? content : new Blob([content],{type:mime});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download=filename;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1500);
+}
+
+/* ----------------------- Normalización de códigos ------------------------ */
+function normProg(raw){
+  if(raw==null) return "";
+  let v=String(raw).trim().toUpperCase();
+  if(v==="") return "";
+  if(["X","R","RA","PM"].includes(v)) return v==="X"?"X":v; // keep case (X/R/RA/PM)
+  return ""; // dato sucio → ignorar
+}
+function normResult(raw){
+  if(raw==null) return "";
+  let v=String(raw).trim();
+  if(v==="") return "";
+  const up=v.toUpperCase().replace(/\s+/g,"");
+  if(up==="SI"||up==="SÍ") return "Si";
+  if(up==="SI-RA"||up==="SÍ-RA"||up==="SIRA") return "Si-RA";
+  if(/^C[1-8]$/.test(up)) return up;
+  if(up==="FS") return "FS";
+  if(up==="NO") return "No";
+  if(up==="NU") return "NU";
+  if(up==="BAJA") return "Baja";
+  return ""; // dato sucio → ignorar
+}
+
+/* ----------------------- Clave de identidad equipo ----------------------- */
+function equipoKeyFrom(serie, inventario){
+  const s = (serie==null?"":String(serie)).trim();
+  if(s) return "S:"+s.toUpperCase();
+  const i = (inventario==null?"":String(inventario)).trim();
+  return "I:"+i.toUpperCase();
+}
+
+/* =========================================================================
+   PERSISTENCIA  (IndexedDB principal + localStorage respaldo)
+   Tres claves lógicas: LS_PREF, LS_DATOS (planilla cruda), LS_USUARIO
+   ========================================================================= */
+const DB_NAME="gmp2026", DB_STORE="kv";
+const LS_PREF="gmp2026_pref", LS_DATOS="gmp2026_datos", LS_USUARIO="gmp2026_usuario";
+
+function idbOpen(){
+  return new Promise((res,rej)=>{
+    const r=indexedDB.open(DB_NAME,1);
+    r.onupgradeneeded=()=>{ const db=r.result; if(!db.objectStoreNames.contains(DB_STORE)) db.createObjectStore(DB_STORE); };
+    r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error);
+  });
+}
+async function idbGet(key){ try{ const db=await idbOpen(); return await new Promise((res,rej)=>{ const t=db.transaction(DB_STORE,"readonly").objectStore(DB_STORE).get(key); t.onsuccess=()=>res(t.result); t.onerror=()=>rej(t.error); }); }catch(e){ return undefined; } }
+async function idbSet(key,val){ try{ const db=await idbOpen(); return await new Promise((res,rej)=>{ const t=db.transaction(DB_STORE,"readwrite").objectStore(DB_STORE).put(val,key); t.onsuccess=()=>res(); t.onerror=()=>rej(t.error); }); }catch(e){ /* ignore */ } }
+async function idbDel(key){ try{ const db=await idbOpen(); return await new Promise((res)=>{ const t=db.transaction(DB_STORE,"readwrite").objectStore(DB_STORE).delete(key); t.onsuccess=()=>res(); t.onerror=()=>res(); }); }catch(e){} }
+
+function lsSet(key,obj){ try{ localStorage.setItem(key, JSON.stringify(obj)); }catch(e){ /* file:// quota */ } }
+function lsGet(key){ try{ const v=localStorage.getItem(key); return v?JSON.parse(v):undefined; }catch(e){ return undefined; } }
+
+async function persistDatos(){
+  const datos = { equipos: state.equipos, registros: state.registros, meta: state.meta };
+  await idbSet(LS_DATOS, datos); lsSet(LS_DATOS, datos);
+}
+async function persistUsuario(){
+  const u = { detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros, usageLog };
+  await idbSet(LS_USUARIO, u); lsSet(LS_USUARIO, u);
+}
+async function persistPrefs(){ await idbSet(LS_PREF, prefs); lsSet(LS_PREF, prefs); }
+
+async function loadAll(){
+  // preferencias
+  let p = await idbGet(LS_PREF) || lsGet(LS_PREF);
+  if(p) prefs = Object.assign(prefs, p);
+  // planilla cruda
+  let d = await idbGet(LS_DATOS) || lsGet(LS_DATOS);
+  if(d){ state.equipos=d.equipos||[]; state.registros=d.registros||[]; state.meta=d.meta||null; }
+  // datos de usuario (prioritarios)
+  let u = await idbGet(LS_USUARIO) || lsGet(LS_USUARIO);
+  if(u){
+    state.detalleMP=u.detalleMP||[]; state.pendientes=u.pendientes||[];
+    state.correctivos=u.correctivos||[]; state.empresas=u.empresas||[]; state.ingenieros=u.ingenieros||[];
+    usageLog=u.usageLog||[];
+  }
+}
+async function markDirty(persist="usuario"){
+  dirtySinceBackup = true;
+  invalidarIndices();
+  if(persist==="usuario") await persistUsuario();
+  else if(persist==="datos") await persistDatos();
+  changesSinceFolderSave++;
+  if(backupDirHandle && changesSinceFolderSave>=8){ saveToFolder(); }
+}
+
+async function resetTotal(){
+  if(!confirm("Reset total: borra preferencias, planilla y datos de usuario del navegador. ¿Continuar?")) return;
+  await idbDel(LS_PREF); await idbDel(LS_DATOS); await idbDel(LS_USUARIO);
+  try{ localStorage.removeItem(LS_PREF); localStorage.removeItem(LS_DATOS); localStorage.removeItem(LS_USUARIO);}catch(e){}
+  state={ equipos:[],registros:[],detalleMP:[],pendientes:[],correctivos:[],empresas:[],ingenieros:[],meta:null };
+  prefs={ columnasEquipos:null, ultimoEjecutor:"", ultimoTipoMant:"Interno", ultimaEmpresa:"", ultimoIngeniero:"" };
+  dirtySinceBackup=false; render(); toast("Datos borrados.");
+}
+
+/* =========================================================================
+   LECTURA DEL .xlsm  (SheetJS) — solo lectura
+   ========================================================================= */
+async function importXlsm(file){
+  try{
+    const buf = await file.arrayBuffer();
+    const wb = XLSX.read(buf, { type:"array" });
+    if(!wb.Sheets["PMP_2026"] || !wb.Sheets["Registro_MP-2026"]){
+      toast("El archivo no tiene las hojas PMP_2026 y Registro_MP-2026."); return;
+    }
+    const avisos=[]; const ignorados=[];
+    const pmp = XLSX.utils.sheet_to_json(wb.Sheets["PMP_2026"], { header:1, raw:false, defval:"" });
+    const reg = XLSX.utils.sheet_to_json(wb.Sheets["Registro_MP-2026"], { header:1, raw:false, defval:"" });
+
+    // --- equipos desde PMP_2026 (encabezados fila 7 => idx 6, datos desde fila 8 => idx 7)
+    const equipos=[]; const byKey={};
+    for(let i=7;i<pmp.length;i++){
+      const row=pmp[i]; if(!row) continue;
+      const inv=String(row[COL.inventario]??"").trim();
+      const serie=String(row[COL.serie]??"").trim();
+      const equipoNom=String(row[COL.equipo]??"").trim();
+      if(!inv && !serie && !equipoNom) continue; // fila vacía
+      const key=equipoKeyFrom(serie, inv);
+      const prog={};
+      for(let m=0;m<12;m++){
+        const v=normProg(row[PMP_MES0+m]);
+        const rawv=row[PMP_MES0+m];
+        if(v) prog[m]=v;
+        else if(rawv!=null && String(rawv).trim()!=="") ignorados.push({hoja:"PMP_2026",fila:i+1,col:MESES[m],valor:String(rawv).trim()});
+      }
+      const eq={
+        key, fila:i+1, idPlanilla:String(row[COL.idPlanilla]??"").trim(), carpeta:String(row[COL.carpeta]??"").trim(),
+        inventario:inv, equipo:equipoNom, servicio:String(row[COL.servicio]??"").trim(), unidad:String(row[COL.unidad]??"").trim(),
+        ubicacion:String(row[COL.ubicacion]??"").trim(), procedencia:String(row[COL.procedencia]??"").trim(),
+        marca:String(row[COL.marca]??"").trim(), modelo:String(row[COL.modelo]??"").trim(), serie,
+        anio:String(row[COL.anio]??"").trim(), vidaUtil:String(row[COL.vidaUtil]??"").trim(),
+        clasif:String(row[COL.clasif]??"").trim(), enuBaja:String(row[COL.enuBaja]??"").trim(),
+        fam:String(row[COL.fam]??"").trim(), frecuencia:String(row[COL.frecuencia]??"").trim(),
+        prog, reg:""
+      };
+      if(!byKey[key]){ equipos.push(eq); byKey[key]=eq; }
+    }
+
+    // --- registros desde Registro_MP-2026 (pares P/R), ignorar columnas tras AR(43)
+    const registros=[];
+    for(let i=7;i<reg.length;i++){
+      const row=reg[i]; if(!row) continue;
+      const inv=String(row[COL.inventario]??"").trim();
+      const serie=String(row[COL.serie]??"").trim();
+      if(!inv && !serie) continue;
+      const key=equipoKeyFrom(serie, inv);
+      const obsFila=String(row[43]??"").trim(); // AR
+      for(let m=0;m<12;m++){
+        const pRaw=row[REG_P0+2*m], rRaw=row[REG_R0+2*m];
+        const programa=normProg(pRaw);
+        const resultado=normResult(rRaw);
+        if(rRaw!=null && String(rRaw).trim()!=="" && !resultado)
+          ignorados.push({hoja:"Registro_MP-2026",fila:i+1,col:MESES[m]+" R",valor:String(rRaw).trim()});
+        if(!programa && !resultado) continue;
+        registros.push({ equipoKey:key, mes:m, programa, resultado, obs:obsFila });
+      }
+    }
+
+    state.equipos=equipos; state.registros=registros;
+    state.meta={ archivo:file.name, fechaCarga:new Date().toISOString(),
+      hojaPMP:"PMP_2026", hojaReg:"Registro_MP-2026",
+      avisos, oficializados:0, ignoradosDetalle:ignorados };
+
+    const promovidos = promoverBorradores();
+    state.meta.oficializados = promovidos;
+    await persistDatos(); await persistUsuario();
+    toast(`Planilla cargada: ${equipos.length} equipos, ${registros.length} registros.` + (promovidos?` ${promovidos} borradores → Oficial.`:"") );
+    if(ignorados.length) console.info(`MP2026: ${ignorados.length} celdas con datos sucios ignoradas.`, ignorados.slice(0,20));
+    ui.view="tablero"; render();
+  }catch(e){ console.error(e); toast("Error leyendo el .xlsm: "+e.message); }
+}
+
+/* =========================================================================
+   IMPORTAR RESPALDO DE LA APP ANTERIOR (§5b)
+   ========================================================================= */
+const OLD_PEND_MAP = {
+  "Reprogramación Mantención Preventiva": { origen:"preventiva", tipo:"reprogramacion" },
+  "Protocolo Interno de Mantenimiento":   { origen:"preventiva", tipo:"protocolo_interno" },
+  "Protocolo Externo de Mantenimiento":   { origen:"preventiva", tipo:"protocolo_externo" },
+  "Otro":                                 { origen:"administrativo", tipo:"otro" }
+};
+async function importOldBackup(file){
+  try{
+    const data = JSON.parse(await file.text());
+    if(data.tipo!=="respaldo-gmp2026"){ toast("No parece un respaldo de la app anterior (tipo ≠ respaldo-gmp2026)."); return; }
+    let nMP=0,nPend=0,nCorr=0;
+    // manuales → detalleMP
+    for(const m of (data.manuales||[])){
+      state.detalleMP.push({
+        id: m.id||uid(), creado: (m.creado||todayISO()).slice(0,10), equipoKey: m.equipoKey,
+        fecha: (m.fecha||"").slice(0,10), programacion: normProg(m.programacion)||m.programacion||"",
+        ejecutor: m.ejecutor||"", resultado: normResult(m.resultado)||m.resultado||"",
+        observaciones: m.observaciones||"", estadoEquipo: m.estadoEquipo||"Operativo",
+        gestionPendiente: !!m.gestionPendiente, tipoMantenimiento: m.tipoMantenimiento||"",
+        ingenieroExterno: m.ingenieroExterno||"", empresaExterna: m.empresaExterna||"",
+        tipoRegistro: m.tipoRegistro==="Oficial"?"Oficial":"Borrador",
+        oficializado: m.oficializado||null, actualizado: (m.actualizado||m.creado||todayISO()).slice(0,10)
+      }); nMP++;
+    }
+    // pendientes → modelo de 5 tipos
+    for(const p of (data.pendientes||[])){
+      const map = OLD_PEND_MAP[p.tipo] || { origen:"administrativo", tipo:"otro" };
+      state.pendientes.push({
+        id: p.id||uid(), creado:(p.creado||todayISO()).slice(0,10), origenMP:p.origenMP||null,
+        equipoKey: p.equipoKey, origen: map.origen, tipo: map.tipo, causal: p.causal||"",
+        fechaReporte: (p.fechaReporte||"").slice(0,10), fechaCompromiso: (p.fechaCompromiso||"").slice(0,10),
+        prioridad: p.prioridad||"Media", situacion: p.situacion||"",
+        respEjecutivo: p.respEjec||p.respEjecutivo||"", respAdministrativo: p.respAdmin||p.respAdministrativo||RESP_ADMIN_DEFAULT,
+        enEsperaDe: p.enEsperaDe||"", descripcion: p.descripcion||"",
+        tareas: normalizeTareas(p.tareas||[]),
+        seguimiento: normalizeSeguimiento(p.gestiones||p.seguimiento||[]),
+        folioSIGEM: p.folioSIGEM||"", empresa: p.empresa||"", origenDoc: p.origenDoc||"",
+        fuente: p.fuente||"app",
+        estado: p.estado||"Abierto", fechaCompletado:(p.fechaCompletado||"").slice(0,10)
+      }); nPend++;
+    }
+    // correctivos
+    for(const c of (data.correctivos||[])){
+      state.correctivos.push(Object.assign({}, c, {
+        id:c.id||uid(), creado:(c.creado||todayISO()).slice(0,10),
+        otCompleta: c.tipoEvento==="Orden de Trabajo" ? true : (c.otCompleta!==false),
+        avances:(c.avances||[]).map(a=>Object.assign({id:a.id||uid()},a)),
+        tipoRegistro: c.tipoRegistro==="Oficial"?"Oficial":"Borrador",
+        estadoEvento: c.estadoEvento||"Abierto"
+      })); nCorr++;
+    }
+    // catálogos
+    for(const e of (data.empresas||[])) if(e && !state.empresas.includes(e)) state.empresas.push(e);
+    for(const g of (data.ingenieros||[])) if(g && !state.ingenieros.includes(g)) state.ingenieros.push(g);
+
+    promoverBorradores();
+    const dropRep=dedupReprogramaciones();
+    await persistUsuario();
+    dirtySinceBackup=true;
+    toast(`Importado: ${nMP} mantenciones, ${nPend} pendientes, ${nCorr} correctivos.`+(dropRep?` ${dropRep} reprog. duplicada(s) descartada(s).`:""));
+    if(!state.equipos.length) toast("Recuerda cargar el .xlsm oficial para revincular equipos.");
+    render();
+  }catch(e){ console.error(e); toast("Error importando respaldo: "+e.message); }
+}
+function normalizeTareas(arr){
+  return (arr||[]).map(t=>({
+    texto: t.texto||"", hecha: !!t.hecha,
+    opciones: t.opciones||null, estado: t.estado||null,
+    subtareas: (t.subtareas||[]).map(s=>({texto:s.texto||"",hecha:!!s.hecha}))
+  }));
+}
+function normalizeSeguimiento(arr){
+  return (arr||[]).map(g=>{
+    if(typeof g==="string") return { fecha:todayISO(), texto:g, autor:"" };
+    return { fecha:(g.fecha||g.cuando||todayISO()).slice(0,10), texto:g.texto||g.detalle||g.comentario||"", autor:g.autor||"" };
+  });
+}
+
+/* =========================================================================
+   IMPORTAR PLANILLA INTEGRADA (.xlsx)  — Sistema_Gestion_MP2026_Integrado
+   Lee los expedientes correctivos (OT + sub-registros) y el módulo de
+   pendientes con taxonomía propia. Correctivos: fusión por folio.
+   Pendientes: se añaden marcados con fuente "integrado".
+   ========================================================================= */
+const INTEG_PEND_MAP = {
+  "Reprogramación MP":          { origen:"preventiva",     tipo:"reprogramacion" },
+  "Documento faltante":         { origen:"correctivo",     tipo:"documental" },
+  "Firma faltante":             { origen:"preventiva",     tipo:"reprogramacion" },
+  "Pauta de Monitoreo Diario":  { origen:"administrativo", tipo:"otro" },
+  "Gestión general":            { origen:"administrativo", tipo:"otro" },
+  "Seguimiento de estado":      { origen:"administrativo", tipo:"otro" }
+};
+function parseAnyDate(v){
+  if(v==null) return "";
+  if(v instanceof Date && !isNaN(v)) return v.toISOString().slice(0,10);
+  let s=String(v).trim(); if(!s) return "";
+  let m=s.match(/^(\d{4})-(\d{2})-(\d{2})/); if(m) return `${m[1]}-${m[2]}-${m[3]}`;
+  m=s.match(/^(\d{1,2})[-\/](\d{1,2})[-\/](\d{4})/); if(m) return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  if(/^\d+(\.\d+)?$/.test(s)){ const n=parseFloat(s); if(n>30000&&n<60000){ return new Date(Date.UTC(1899,11,30)+Math.round(n)*86400000).toISOString().slice(0,10); } }
+  const d=new Date(s); return isNaN(d)?"":d.toISOString().slice(0,10);
+}
+// Devuelve {idx:{header→col}, rows:[...]} de una hoja, identificando columnas por encabezado.
+function sheetTable(wb, name){
+  const ws=wb.Sheets[name]; if(!ws) return null;
+  const arr=XLSX.utils.sheet_to_json(ws,{header:1,raw:false,defval:""});
+  let h=-1; for(let i=0;i<arr.length;i++){ if(arr[i] && arr[i].some(c=>String(c).trim()!=="")){ h=i; break; } }
+  if(h<0) return { idx:{}, rows:[] };
+  const idx={}; arr[h].forEach((c,i)=>{ const k=String(c).trim(); if(k) idx[k]=i; });
+  return { idx, rows: arr.slice(h+1).filter(r=>r && r.some(c=>String(c).trim()!=="")) };
+}
+async function importIntegrado(file){
+  try{
+    const wb=XLSX.read(await file.arrayBuffer(),{type:"array"});
+    const get=(row,idx,name)=> idx[name]!=null ? String(row[idx[name]]??"").trim() : "";
+    let nCorrNuevo=0, nCorrEnriq=0, nAvances=0, nPend=0;
+
+    // índice de correctivos por folio (incluye los ya importados del JSON)
+    const corrByFolio={}; for(const c of state.correctivos){ if(c.folioSigem) corrByFolio[c.folioSigem]=c; }
+    function ensureCorr(folio, eqKey){
+      if(corrByFolio[folio]) return corrByFolio[folio];
+      const c={ id:uid(), creado:todayISO(), equipoKey:eqKey||"", folioSigem:folio, otCompleta:false,
+        tipoEvento:"Orden de Trabajo", requerimiento:"", fechaDocumento:"", tecnico:"", estadoEquipo:"No Operativo",
+        estadoEvento:"Abierto", tipoRegistro:"Borrador", fuente:"integrado", avances:[] };
+      state.correctivos.push(c); corrByFolio[folio]=c; nCorrNuevo++; return c;
+    }
+    function addAvance(c, av){
+      if(!av.fecha && !av.detalle && !av.numero) return;
+      const dup=(c.avances||[]).some(a=>a.tipo===av.tipo && (a.fecha||"")===(av.fecha||"") && (a.numero||"")===(av.numero||""));
+      if(dup) return;
+      c.avances.push(Object.assign({id:uid(),registrado:new Date().toISOString()},av)); nAvances++;
+    }
+
+    // 1. Órdenes de Trabajo (apertura)
+    const ot=sheetTable(wb,"1. Órdenes de Trabajo");
+    if(ot) for(const r of ot.rows){
+      const folio=get(r,ot.idx,"Folio SIGEM"); if(!folio) continue;
+      const inv=get(r,ot.idx,"N° Inventario"), serie=get(r,ot.idx,"N° Serie (auto)");
+      const eqKey=equipoKeyFrom(serie,inv);
+      const existed=!!corrByFolio[folio];
+      const c=ensureCorr(folio,eqKey);
+      // enriquecer apertura (la planilla integrada es más completa)
+      if(!c.equipoKey) c.equipoKey=eqKey;
+      if(!c.fechaDocumento) c.fechaDocumento=parseAnyDate(get(r,ot.idx,"Fecha OT"));
+      if(!c.tecnico) c.tecnico=get(r,ot.idx,"Técnico asignado");
+      if(!c.requerimiento) c.requerimiento=get(r,ot.idx,"Requerimiento");
+      const estIni=get(r,ot.idx,"Estado inicial"); if(estIni) c.estadoEquipo=estIni;
+      c.otCompleta=true;
+      const estEvento=get(r,ot.idx,"Estado del evento");
+      if(/cerrad/i.test(estEvento)){ c.estadoEvento="Cerrado"; const fc=parseAnyDate(get(r,ot.idx,"Fecha cierre OT")); if(fc)c.fechaCierre=fc; }
+      if(existed) nCorrEnriq++;
+    }
+    // 5. Servicio Técnico (Envíos)
+    const env=sheetTable(wb,"5. Servicio Técnico (Envíos)");
+    if(env) for(const r of env.rows){
+      const folio=get(r,env.idx,"Folio SIGEM"); if(!folio) continue; const c=ensureCorr(folio);
+      addAvance(c,{ tipo:"Envío a servicio técnico", fecha:parseAnyDate(get(r,env.idx,"Fecha envío")),
+        numero:get(r,env.idx,"N° Hoja de Envío"), empresa:get(r,env.idx,"Empresa destino"), responsable:get(r,env.idx,"Responsable que envía"),
+        detalle:[`Reporte ${get(r,env.idx,"N° Reporte Servicio")}`.trim(), get(r,env.idx,"¿Reporte recibido?")].filter(s=>s&&s!=="Reporte").join(" · ") });
+      const fret=parseAnyDate(get(r,env.idx,"Fecha retorno"));
+      if(fret) addAvance(c,{ tipo:"Retorno de servicio técnico", fecha:fret, detalle:[`Estado: ${get(r,env.idx,"Estado al retorno")}`, get(r,env.idx,"Folio guía despacho")?`Guía ${get(r,env.idx,"Folio guía despacho")}`:""].filter(Boolean).join(" · "), estadoEquipoVisita:get(r,env.idx,"Estado al retorno") });
+    }
+    // 4. Visitas Técnicas
+    const vis=sheetTable(wb,"4. Visitas Técnicas");
+    if(vis) for(const r of vis.rows){
+      const folio=get(r,vis.idx,"Folio SIGEM"); if(!folio) continue; const c=ensureCorr(folio);
+      addAvance(c,{ tipo:"Visita técnica externa", fecha:parseAnyDate(get(r,vis.idx,"Fecha visita")),
+        empresa:get(r,vis.idx,"Proveedor / empresa"), responsable:get(r,vis.idx,"Ingeniero externo"), numero:get(r,vis.idx,"N° Reporte Servicio"),
+        detalle:[`¿Reparó? ${get(r,vis.idx,"¿Reparó?")}`.trim(), get(r,vis.idx,"Descripción tarea")].filter(s=>s&&s!=="¿Reparó?").join(" — "),
+        estadoEquipoVisita:get(r,vis.idx,"Estado final") });
+    }
+    // 2. Línea de Compra
+    const lc=sheetTable(wb,"2. Línea de Compra");
+    if(lc) for(const r of lc.rows){
+      const folio=get(r,lc.idx,"Folio SIGEM"); if(!folio) continue; const c=ensureCorr(folio);
+      const nCot=get(r,lc.idx,"N° cotización"), fCot=parseAnyDate(get(r,lc.idx,"Fecha cotización")), prov=get(r,lc.idx,"Proveedor cotizado");
+      if(nCot||fCot||prov) addAvance(c,{ tipo:"Cotización", fecha:fCot, numero:nCot, empresa:prov, detalle:[get(r,lc.idx,"Tipo de compra"), get(r,lc.idx,"Monto cotizado")?`Monto ${get(r,lc.idx,"Monto cotizado")}`:""].filter(Boolean).join(" · ") });
+      const nIT=get(r,lc.idx,"N° Informe Técnico");
+      if(nIT) addAvance(c,{ tipo:"Informe técnico emitido", fecha:parseAnyDate(get(r,lc.idx,"Fecha informe")), numero:nIT, responsable:get(r,lc.idx,"Responsable informe") });
+      const nOC=get(r,lc.idx,"N° OC");
+      if(nOC) addAvance(c,{ tipo:"OC emitida", fecha:parseAnyDate(get(r,lc.idx,"Fecha emisión OC")), numero:nOC, detalle:get(r,lc.idx,"Descripción OC") });
+    }
+    // 7. Reparación en Terreno
+    const rt=sheetTable(wb,"7. Reparación en Terreno");
+    if(rt) for(const r of rt.rows){
+      const folio=get(r,rt.idx,"Folio SIGEM"); if(!folio) continue; const c=ensureCorr(folio);
+      addAvance(c,{ tipo:"Reparación en terreno", fecha:parseAnyDate(get(r,rt.idx,"Fecha reparación / cierre")), detalle:get(r,rt.idx,"Descripción tarea"), estadoEquipoVisita:get(r,rt.idx,"Estado final equipo") });
+    }
+    // 6. Bajas
+    const bj=sheetTable(wb,"6. Bajas");
+    if(bj) for(const r of bj.rows){
+      const folio=get(r,bj.idx,"Folio SIGEM"); if(!folio) continue; const c=ensureCorr(folio);
+      addAvance(c,{ tipo:"Baja", fecha:parseAnyDate(get(r,bj.idx,"Fecha baja")), numero:get(r,bj.idx,"Folio documento de baja"), responsable:get(r,bj.idx,"Responsable interno"), detalle:get(r,bj.idx,"Motivo") });
+      c.estadoEquipo="Baja";
+    }
+
+    // Pendientes (taxonomía propia) → se añaden marcados fuente:"integrado"
+    const pe=sheetTable(wb,"Pendientes");
+    if(pe) for(const r of pe.rows){
+      const tipoOrig=get(r,pe.idx,"Tipo de pendiente"); const inv=get(r,pe.idx,"N° Inventario"), serie=get(r,pe.idx,"Serie");
+      if(!tipoOrig && !inv && !serie) continue;
+      const map=INTEG_PEND_MAP[tipoOrig] || { origen:"administrativo", tipo:"otro" };
+      const estadoSheet=get(r,pe.idx,"Estado");
+      const estado=/hecho|resuelto|complet/i.test(estadoSheet)?"Completado":"Abierto";
+      const tareasTxt=get(r,pe.idx,"Tareas");
+      const tareas=tareasTxt? tareasTxt.split(/\r?\n|\s\|\s/).map(t=>t.trim()).filter(Boolean).map(t=>({texto:t,hecha:estado==="Completado"})):[];
+      state.pendientes.push({
+        id:uid(), creado:parseAnyDate(get(r,pe.idx,"Creado"))||todayISO(), origenMP:null,
+        equipoKey:equipoKeyFrom(serie,inv), origen:map.origen, tipo:map.tipo, tipoOriginal:tipoOrig, causal:"",
+        fechaReporte:"", fechaCompromiso:parseAnyDate(get(r,pe.idx,"Fecha compromiso")),
+        prioridad:get(r,pe.idx,"Prioridad")||"Media", situacion:[get(r,pe.idx,"Situación"), estadoSheet].filter(Boolean).join(" · "),
+        respEjecutivo:get(r,pe.idx,"Responsable Ejecutivo"), respAdministrativo:get(r,pe.idx,"Responsable Administrativo")||RESP_ADMIN_DEFAULT,
+        enEsperaDe:get(r,pe.idx,"En espera de"),
+        descripcion:[tipoOrig?`[${tipoOrig}]`:"", get(r,pe.idx,"Descripción")].filter(Boolean).join(" "),
+        tareas, seguimiento:[], folioSIGEM:"", empresa:"", origenDoc:"",
+        fuente:"integrado", estado, fechaCompletado:parseAnyDate(get(r,pe.idx,"Fecha completado"))
+      }); nPend++;
+    }
+
+    const dropRep=dedupReprogramaciones();
+    await markDirty("usuario"); dirtySinceBackup=true;
+    toast(`Integrado: ${nCorrNuevo} correctivos nuevos, ${nCorrEnriq} enriquecidos (+${nAvances} avances), ${nPend} pendientes.`+(dropRep?` ${dropRep} reprog. dup. descartada(s).`:""));
+    if(!state.equipos.length) toast("Carga el .xlsm oficial para revincular equipos.");
+    render();
+  }catch(e){ console.error(e); toast("Error importando planilla integrada: "+e.message); }
+}
+
+/* =========================================================================
+   IMPORTAR CONSOLIDADOS (.xlsx) — "Consolidado de mantenciones / pendientes"
+   Detecta el tipo por los encabezados y registra cada fila como detalleMP o
+   pendiente, enlazando por N° Serie / N° Inventario.
+   ========================================================================= */
+function normEstadoEquipo(v){
+  if(!v) return ""; const s=String(v).trim().toLowerCase();
+  if(s.includes("no oper")) return "No Operativo";
+  if(s.startsWith("oper")) return "Operativo";
+  if(s.includes("servicio")) return "Servicio Técnico";
+  if(s.includes("préstamo")||s.includes("prestamo")) return "Préstamo";
+  if(s.includes("ubicab")) return "No Ubicable";
+  if(s==="baja") return "Baja";
+  return "";
+}
+const CONS_PEND_MAP = Object.assign({}, OLD_PEND_MAP, INTEG_PEND_MAP);
+function parseTareasTexto(txt){
+  if(!txt) return [];
+  return String(txt).split(/\r?\n|\s*;\s*|\s\|\s/).map(s=>s.trim()).filter(Boolean).map(s=>{
+    const m=s.match(/^\[\s*([xX✓]?)\s*\]\s*(.*)$/);
+    if(m) return { texto:m[2].trim(), hecha: m[1].trim()!=="" };
+    return { texto:s, hecha:false };
+  });
+}
+async function importConsolidado(file){
+  try{
+    const wb=XLSX.read(await file.arrayBuffer(),{type:"array"});
+    const keys=new Set(state.equipos.map(e=>e.key));
+    let nMP=0, nPend=0, unlinkedMP=0, unlinkedPend=0, badRes=0;
+    for(const sheetName of wb.SheetNames){
+      const tbl=sheetTable(wb, sheetName); if(!tbl || !tbl.rows.length) continue;
+      const idx=tbl.idx, get=(r,name)=> idx[name]!=null?String(r[idx[name]]??"").trim():"";
+      if(idx["Fecha de ejecución"]!=null && idx["Resultado"]!=null){
+        // ---- Mantenciones ----
+        for(const r of tbl.rows){
+          const inv=get(r,"N° Inventario"), serie=get(r,"Serie");
+          if(!inv && !serie) continue;
+          const k=equipoKeyFrom(serie,inv); if(!keys.has(k)) unlinkedMP++;
+          const resultado=normResult(get(r,"Resultado")); if(get(r,"Resultado") && !resultado) badRes++;
+          const empresa=get(r,"Empresa (si externo)");
+          const fecha=parseAnyDate(get(r,"Fecha de ejecución"));
+          const eq=equipoByKey(k); const mes=mesDeFecha(fecha);
+          state.detalleMP.push({
+            id:uid(), creado:todayISO(), equipoKey:k, fecha,
+            programacion: (eq&&mes!=null&&eq.prog[mes])?eq.prog[mes]:"X",
+            ejecutor:get(r,"Ejecutor"), resultado, observaciones:[get(r,"Observaciones"),get(r,"Significado / Detalle")].filter(Boolean).join(" · "),
+            estadoEquipo: normEstadoEquipo(get(r,"Estado del equipo"))|| (resultado?estadoDeResultado(resultado)||"Operativo":"Operativo"),
+            gestionPendiente:false, tipoMantenimiento: empresa?"Externo":"Interno",
+            ingenieroExterno:"", empresaExterna:empresa,
+            tipoRegistro:"Borrador", fuente:"consolidado"
+          });
+          if(empresa && !state.empresas.includes(empresa)) state.empresas.push(empresa);
+          nMP++;
+        }
+      } else if(idx["Tipo de pendiente"]!=null){
+        // ---- Pendientes ----
+        for(const r of tbl.rows){
+          const inv=get(r,"N° Inventario"), serie=get(r,"Serie"); const tipoOrig=get(r,"Tipo de pendiente");
+          if(!inv && !serie && !tipoOrig) continue;
+          const k=equipoKeyFrom(serie,inv); if(!keys.has(k)) unlinkedPend++;
+          const map=CONS_PEND_MAP[tipoOrig] || { origen:"administrativo", tipo:"otro" };
+          const estado=/complet|hecho|resuelto/i.test(get(r,"Estado"))?"Completado":"Abierto";
+          state.pendientes.push({
+            id:uid(), creado:todayISO(), origenMP:null, equipoKey:k, origen:map.origen, tipo:map.tipo, tipoOriginal:tipoOrig, causal:"",
+            fechaReporte:"", fechaCompromiso:parseAnyDate(get(r,"Fecha compromiso")), prioridad:"Media", situacion:"",
+            respEjecutivo:get(r,"Responsable Ejecutivo"), respAdministrativo:get(r,"Responsable Administrativo")||RESP_ADMIN_DEFAULT,
+            enEsperaDe:"", descripcion:[tipoOrig?`[${tipoOrig}]`:"",get(r,"Descripción")].filter(Boolean).join(" "),
+            tareas:parseTareasTexto(get(r,"Tareas")), seguimiento:[], folioSIGEM:"", empresa:"", origenDoc:"",
+            fuente:"consolidado", estado, fechaCompletado: estado==="Completado"?todayISO():""
+          });
+          nPend++;
+        }
+      }
+    }
+    const promovidos=promoverBorradores();
+    const dropRep=dedupReprogramaciones();
+    await markDirty("usuario"); dirtySinceBackup=true;
+    const partes=[]; if(nMP)partes.push(`${nMP} mantenciones`); if(nPend)partes.push(`${nPend} pendientes`);
+    toast(`Consolidado importado: ${partes.join(" · ")||"nada reconocido"}.`+(promovidos?` ${promovidos}→Oficial.`:"")+(dropRep?` ${dropRep} reprog. dup. descartada(s).`:""));
+    if(unlinkedMP||unlinkedPend) console.info(`Consolidado: ${unlinkedMP} MP y ${unlinkedPend} pendientes sin equipo en la planilla (se conservan).`);
+    if(!state.equipos.length) toast("Carga el .xlsm oficial para enlazar equipos.");
+    render();
+    return { nMP, nPend, unlinkedMP, unlinkedPend, badRes, promovidos };
+  }catch(e){ console.error(e); toast("Error importando consolidado: "+e.message); }
+}
+
+/* =========================================================================
+   LÓGICA DE NEGOCIO / DECISIÓN
+   ========================================================================= */
+const equipoByKey = (k)=> idx().eq.get(k);
+const regsByEquipo = (k)=> idx().r.get(k)||[];
+const mpByEquipo = (k)=> idx().m.get(k)||[];
+const pendByEquipo = (k)=> idx().p.get(k)||[];
+const corrByEquipo = (k)=> idx().c.get(k)||[];
+// Índices por equipoKey (rendimiento): se reconstruyen al renderizar o tras mutar datos.
+let _idx=null;
+function invalidarIndices(){ _idx=null; }
+function idx(){
+  if(_idx) return _idx;
+  const eq=new Map(), r=new Map(), m=new Map(), p=new Map(), c=new Map();
+  const push=(map,k,v)=>{ let a=map.get(k); if(!a){ a=[]; map.set(k,a); } a.push(v); };
+  for(const e of state.equipos) eq.set(e.key,e);
+  for(const x of state.registros) push(r,x.equipoKey,x);
+  for(const x of state.detalleMP) push(m,x.equipoKey,x);
+  for(const x of state.pendientes) push(p,x.equipoKey,x);
+  for(const x of state.correctivos) push(c,x.equipoKey,x);
+  _idx={eq,r,m,p,c}; return _idx;
+}
+
+// B.4 — resultado que cuenta por equipo+mes
+function resultadoMes(key, mes){
+  const regs=idx().r.get(key);
+  if(regs){ const reg=regs.find(r=>r.mes===mes && r.resultado); if(reg) return { resultado:reg.resultado, origen:"planilla", programa:reg.programa }; }
+  const mlist=idx().m.get(key);
+  if(mlist){ const mps=mlist.filter(m=>m.resultado && mesDeFecha(m.fecha)===mes).sort((a,b)=> (a.fecha<b.fecha?1:-1));
+    if(mps.length) return { resultado:mps[0].resultado, origen:"app", mp:mps[0] }; }
+  return { resultado:"", origen:"none" };
+}
+function mesDeFecha(iso){ if(!iso) return null; const m=parseInt(String(iso).slice(5,7),10); return isNaN(m)?null:m-1; }
+
+// B.3 — promoción Borrador→Oficial al recargar planilla
+function promoverBorradores(){
+  let n=0;
+  for(const m of state.detalleMP){
+    if(m.tipoRegistro!=="Borrador") continue;
+    const mes = mesDeFecha(m.fecha); if(mes==null) continue;
+    const reg = state.registros.find(r=>r.equipoKey===m.equipoKey && r.mes===mes && r.resultado);
+    if(reg){ m.tipoRegistro="Oficial"; m.oficializado=todayISO(); n++; }
+  }
+  return n;
+}
+
+// Descarta reprogramaciones duplicadas: una sola por equipo (prefiere conservar la Abierta, luego la más antigua).
+function dedupReprogramaciones(){
+  const byEq={};
+  state.pendientes.forEach(p=>{ if(p.tipo==="reprogramacion"){ (byEq[p.equipoKey]=byEq[p.equipoKey]||[]).push(p); } });
+  const removeIds=new Set();
+  Object.values(byEq).forEach(grp=>{
+    if(grp.length<2) return;
+    grp.sort((a,b)=> (a.estado==="Completado"?1:0)-(b.estado==="Completado"?1:0) || String(a.creado||"").localeCompare(String(b.creado||"")));
+    grp.slice(1).forEach(p=>removeIds.add(p.id));
+  });
+  if(removeIds.size) state.pendientes=state.pendientes.filter(p=>!removeIds.has(p.id));
+  return removeIds.size;
+}
+
+function estadoEquipo(key){
+  // Baja tiene prioridad máxima
+  for(let m=11;m>=0;m--){ const r=resultadoMes(key,m); if(r.resultado==="Baja") return "Baja"; }
+  // correctivo abierto → No Operativo / Servicio Técnico
+  const corrAbierto = state.correctivos.some(c=>c.equipoKey===key && c.estadoEvento!=="Cerrado");
+  // último resultado con estado implícito (recorrido de meses desc)
+  let estado=null, ultFecha="";
+  for(let m=11;m>=0;m--){
+    const r=resultadoMes(key,m);
+    if(!r.resultado) continue;
+    const e=estadoDeResultado(r.resultado, r.mp);
+    if(e){ estado=e; break; }
+  }
+  // mantenciones de la app posteriores pueden fijar estado explícito
+  const mps=mpByEquipo(key).filter(m=>m.estadoEquipo).sort((a,b)=>a.fecha<b.fecha?1:-1);
+  if(mps.length && mps[0].estadoEquipo && !["Baja"].includes(estado)){
+    // si el resultado más reciente lo dejó operativo, respeta lo que marcó el técnico
+    if(estado===null || estado==="Operativo") estado=mps[0].estadoEquipo;
+  }
+  if(corrAbierto && (!estado || estado==="Operativo")) estado="No Operativo";
+  return estado || "Operativo";
+}
+function estadoDeResultado(res, mp){
+  switch(res){
+    case "C2": return "Servicio Técnico";
+    case "C3": return "No Operativo";
+    case "C4": return "Préstamo";
+    case "FS": return "No Operativo";
+    case "NU": return "No Ubicable";
+    case "Baja": return "Baja";
+    case "Si": case "Si-RA": return mp && mp.estadoEquipo ? mp.estadoEquipo : "Operativo";
+    default: return null; // C1/C5/C6/C7/C8 (reprog) / No → no cambian estado
+  }
+}
+
+// B.11 — cumplimiento
+function cumplimiento(){
+  const hoyMes = new Date().getMonth();
+  let progT=0, realT=0; const porMes=[];
+  for(let m=0;m<12;m++){
+    let prog=0, real=0;
+    for(const e of state.equipos){
+      if(!e.prog[m]) continue; // no programado
+      prog++;
+      const r=resultadoMes(e.key,m);
+      if(r.resultado==="Si"||r.resultado==="Si-RA") real++;
+    }
+    const futuro = m>hoyMes;
+    porMes.push({ mes:m, prog, real, pct: (!prog||futuro)?null:Math.round(100*real/prog), futuro });
+    if(!futuro){ progT+=prog; realT+=real; }
+  }
+  return { porMes, total: progT?Math.round(100*realT/progT):null, progT, realT };
+}
+
+// Resumen mes × código (conteo de equipos)
+function resumenMesCodigo(){
+  // columnas: X, R, RA, sin registro, Sí, y causales agregadas
+  const cols = ["X","R","RA","PM","sin","Si","Si-RA","C1-8","FS","No","NU","Baja"];
+  const matrix=[];
+  for(let m=0;m<12;m++){
+    const row={ mes:m, counts:{} }; cols.forEach(c=>row.counts[c]=0);
+    for(const e of state.equipos){
+      const prog=e.prog[m];
+      const r=resultadoMes(e.key,m);
+      if(prog && PROG_CODES[prog]) row.counts[prog]++;
+      if(prog && !r.resultado) row.counts["sin"]++;
+      const res=r.resultado;
+      if(res==="Si") row.counts["Si"]++;
+      else if(res==="Si-RA") row.counts["Si-RA"]++;
+      else if(/^C[1-8]$/.test(res)) row.counts["C1-8"]++;
+      else if(res==="FS") row.counts["FS"]++;
+      else if(res==="No") row.counts["No"]++;
+      else if(res==="NU") row.counts["NU"]++;
+      else if(res==="Baja") row.counts["Baja"]++;
+    }
+    matrix.push(row);
+  }
+  return { cols, matrix };
+}
+
+// Etapa del reporte de reprogramación (B.7) según tareas hechas
+function etapaReprog(p){
+  const done = (label)=> (p.tareas||[]).some(t=> (t.texto||"").toLowerCase().includes(label) && (t.hecha|| t.estado==="Sí"));
+  const generado=done("generar")||done("genera");
+  const impreso=done("imprimir")||done("imprim");
+  const fSup=done("supervisor");
+  const fJefe=done("jefe");
+  if(!generado) return { label:"Por generar", cls:"b-bad" };
+  if(!impreso) return { label:"Por imprimir", cls:"b-warn" };
+  if(!fSup && !fJefe) return { label:"Faltan 2 firmas", cls:"b-warn" };
+  if(fSup && !fJefe) return { label:"Falta firma del jefe", cls:"b-warn" };
+  if(!fSup && fJefe) return { label:"Falta firma del supervisor", cls:"b-warn" };
+  // ambas firmas
+  const enMaestro = p.causal && p.fechaCompromiso ? hayResultadoPlanillaProx(p) : false;
+  return { label: enMaestro?"Oficializado":"Firmado · por volcar", cls: enMaestro?"b-ok":"b-info", firmado:true, enMaestro };
+}
+function hayResultadoPlanillaProx(p){
+  const e=equipoByKey(p.equipoKey); if(!e) return false;
+  // si la planilla ya tiene resultado de reprogramación en algún mes futuro próximo
+  return state.registros.some(r=>r.equipoKey===p.equipoKey && (r.programa==="R") && r.resultado);
+}
+function reprogFirmada(p){ const et=etapaReprog(p); return !!et.firmado; }
+
+// días de atraso del pendiente
+function diasAtraso(p){
+  if(p.estado==="Completado") return null;
+  const d=daysFromToday(p.fechaCompromiso);
+  return d!=null && d>0 ? d : null;
+}
+function pendienteVencido(p){ return p.estado!=="Completado" && diasAtraso(p)!=null; }
+
+// B.12 — Tablero de operatividad
+function equiposOperatividad(){
+  const out=[];
+  for(const e of state.equipos){
+    const est=estadoEquipo(e.key);
+    const corrAbierto = state.correctivos.some(c=>c.equipoKey===e.key && c.estadoEvento!=="Cerrado");
+    const pend = pendByEquipo(e.key).filter(p=>p.estado!=="Completado");
+    const vencidos = pend.filter(pendienteVencido);
+    const protocolos = pend.filter(p=>p.tipo==="protocolo_interno"||p.tipo==="protocolo_externo");
+    const inFS_NU = est==="No Operativo"||est==="No Ubicable";
+    if(est!=="Operativo" || corrAbierto || inFS_NU || vencidos.length || protocolos.length){
+      // criticidad por días detenido
+      let dias=0;
+      const corr=corrByEquipo(e.key).filter(c=>c.estadoEvento!=="Cerrado").sort((a,b)=> (a.fechaDocumento<b.fechaDocumento?1:-1));
+      if(corr.length && corr[0].fechaDocumento) dias=daysFromToday(corr[0].fechaDocumento)||0;
+      out.push({ equipo:e, estado:est, corrAbierto, pend:pend.length, vencidos:vencidos.length, dias,
+        critico: est==="Baja"?3:(dias>30||vencidos.length?2:1) });
+    }
+  }
+  return out.sort((a,b)=> b.critico-a.critico || b.dias-a.dias);
+}
+
+// MP del mes sin resultado / vencidas
+function mpSinResultado(){
+  const hoyMes=new Date().getMonth(); const out=[];
+  for(const e of state.equipos){
+    for(let m=0;m<=hoyMes;m++){
+      if(!e.prog[m]) continue;
+      const r=resultadoMes(e.key,m);
+      if(!r.resultado){ out.push({equipo:e, mes:m, vencida: m<hoyMes }); }
+    }
+  }
+  return out;
+}
+
+// Borradores listos para volcar al .xlsm (§7 panel)
+function porVolcar(){
+  const out=[];
+  // mantenciones en borrador con resultado directo
+  for(const m of state.detalleMP){
+    if(m.tipoRegistro!=="Borrador" || !m.resultado) continue;
+    const mes=mesDeFecha(m.fecha); if(mes==null) continue;
+    const e=equipoByKey(m.equipoKey); if(!e) continue;
+    const esReprog=/^C[1-8]$/.test(m.resultado);
+    let listo=true;
+    if(esReprog){
+      // solo si su reporte de reprogramación tiene las 2 firmas
+      const p=state.pendientes.find(pp=>pp.equipoKey===m.equipoKey && pp.tipo==="reprogramacion" && pp.estado!=="Completado");
+      listo = p ? reprogFirmada(p) : false;
+    }
+    if(!listo) continue;
+    out.push({
+      tipo:"MP", equipo:e, mes, codigo:m.resultado,
+      hoja:"Registro_MP-2026", fila:e.fila, columna:REG_R_COL_LETTER[mes], ref:m
+    });
+  }
+  return out.sort((a,b)=> (a.equipo.servicio||"").localeCompare(b.equipo.servicio||"") || a.mes-b.mes);
+}
+
+/* =========================================================================
+   RENDER — navegación y vistas
+   ========================================================================= */
+const NAV = [
+  { id:"tablero", label:"Tablero", ico:"◧" },
+  { id:"equipos", label:"Equipos", ico:"▦" },
+  { id:"preventivo", label:"Mant. Preventivo", ico:"✓" },
+  { id:"correctivo", label:"Mant. Correctivo", ico:"⚒" },
+  { id:"pendientes", label:"Pendientes", ico:"◷" },
+  { id:"reprogramacion", label:"Reprogramación", ico:"↻" },
+  { id:"resumen", label:"Resumen mes×código", ico:"▥" },
+];
+function renderNav(){
+  const nav=$("#nav"); nav.innerHTML="";
+  const pendAbiertos = state.pendientes.filter(p=>p.estado!=="Completado").length;
+  const opCount = state.equipos.length? equiposOperatividad().length : 0;
+  for(const n of NAV){
+    const b=el("button",{class:ui.view===n.id?"active":"", onclick:()=>{ ui.view=n.id; render(); }},
+      el("span",{class:"ico"},n.ico), el("span",{},n.label));
+    if(n.id==="pendientes" && pendAbiertos) b.appendChild(el("span",{class:"navbadge"},String(pendAbiertos)));
+    if(n.id==="tablero" && opCount) b.appendChild(el("span",{class:"navbadge"},String(opCount)));
+    nav.appendChild(b);
+  }
+  nav.appendChild(el("div",{class:"navsep"}));
+  nav.appendChild(el("button",{onclick:openImportOld}, el("span",{class:"ico"},"⇪"), el("span",{},"Importar respaldo anterior")));
+  nav.appendChild(el("button",{onclick:()=>$("#fileIntegrado").click()}, el("span",{class:"ico"},"⊞"), el("span",{},"Importar planilla integrada")));
+  if(state.meta){
+    nav.appendChild(el("div",{class:"navhint"}, `Planilla: ${esc(state.meta.archivo||"")}`));
+    nav.appendChild(el("div",{class:"navhint"}, `${state.equipos.length} equipos · cargada ${fmtDate(state.meta.fechaCarga)}`));
+  } else {
+    nav.appendChild(el("div",{class:"navhint"}, "Sin planilla cargada."));
+  }
+}
+
+function render(){
+  invalidarIndices();
+  renderNav();
+  const v=$("#view"); v.innerHTML="";
+  if(!state.equipos.length && state.view!=="tablero"){}
+  switch(ui.view){
+    case "tablero": v.appendChild(viewTablero()); break;
+    case "equipos": v.appendChild(viewEquipos()); break;
+    case "preventivo": v.appendChild(viewPreventivo()); break;
+    case "correctivo": v.appendChild(viewCorrectivo()); break;
+    case "pendientes": v.appendChild(viewPendientes()); break;
+    case "reprogramacion": v.appendChild(viewReprogramacion()); break;
+    case "resumen": v.appendChild(viewResumen()); break;
+    default: v.appendChild(viewTablero());
+  }
+  if(recording && ui.view!==_lastLoggedView){ recordEvent("view","Vista: "+(NAV.find(n=>n.id===ui.view)?.label||ui.view)); _lastLoggedView=ui.view; }
+  syncRecBtn();
+}
+
+/* ----------------------------- Vista: Tablero ---------------------------- */
+function viewTablero(){
+  const wrap=el("div");
+  if(!state.equipos.length){
+    wrap.appendChild(el("div",{class:"empty"},
+      el("div",{class:"big"},"◧"),
+      el("div",{},"No hay planilla cargada."),
+      el("div",{class:"small muted",style:"margin:8px 0 16px"},"Carga ProgramaciónMP2026.xlsm para comenzar, o importa un respaldo anterior."),
+      el("button",{class:"btn primary",onclick:()=>$("#fileXlsm").click()},"Cargar .xlsm"),
+    ));
+    return wrap;
+  }
+  // aviso respaldo
+  if(dirtySinceBackup){
+    wrap.appendChild(el("div",{class:"banner warn"},
+      el("span",{},"⚠ Hay cambios sin respaldar."),
+      el("span",{class:"spacer"}),
+      el("button",{class:"btn sm",onclick:respaldarAhora},"Respaldar ahora (JSON + Excel)"),
+      backupDirHandle?null:el("button",{class:"btn sm",onclick:chooseBackupFolder},"Elegir carpeta de auto-guardado")
+    ));
+  }
+  wrap.appendChild(el("div",{class:"viewhead"},
+    el("h2",{},"Centro de control — ¿qué hago hoy?"),
+    el("span",{class:"sub"}, `${state.equipos.length} equipos`),
+  ));
+
+  // KPIs
+  const cum=cumplimiento();
+  const op=equiposOperatividad();
+  const sinRes=mpSinResultado();
+  const vencidas=sinRes.filter(x=>x.vencida).length;
+  const pendAbiertos=state.pendientes.filter(p=>p.estado!=="Completado");
+  const pendVenc=pendAbiertos.filter(pendienteVencido).length;
+  const detenidos=op.filter(o=>o.estado!=="Operativo").length;
+  const enST=op.filter(o=>o.estado==="Servicio Técnico");
+  const operativos=state.equipos.length - op.filter(o=>o.estado!=="Operativo").length;
+  const pctOp= state.equipos.length? Math.round(100*operativos/state.equipos.length):0;
+  const firmar=state.pendientes.filter(p=>p.tipo==="reprogramacion" && p.estado!=="Completado" && !reprogFirmada(p)).length;
+
+  const kpis=el("div",{class:"kpis"});
+  const kpi=(label,val,sub,cls,act)=> el("div",{class:"kpi "+(cls||""),onclick:act}, el("div",{class:"k-label"},label), el("div",{class:"k-val"},val), sub?el("div",{class:"k-sub"},sub):null);
+  kpis.appendChild(kpi("% Operativos", pctOp+"%", `${operativos}/${state.equipos.length}`, pctOp>=90?"ok":(pctOp>=75?"warn":"alert"), ()=>goEquipos({estado:"Operativo"})));
+  kpis.appendChild(kpi("Cumplimiento MP", cum.total!=null?cum.total+"%":"—", `${cum.realT}/${cum.progT} realizadas`, cum.total>=80?"ok":"warn", ()=>{ui.view="resumen";render();}));
+  kpis.appendChild(kpi("MP del mes sin resultado", String(sinRes.length-vencidas), "por gestionar", (sinRes.length-vencidas)?"warn":"ok", ()=>{ui.view="preventivo";render();}));
+  kpis.appendChild(kpi("MP vencidas", String(vencidas), "meses pasados sin registro", vencidas?"alert":"ok", ()=>{ui.view="preventivo";render();}));
+  kpis.appendChild(kpi("Pendientes", String(pendAbiertos.length), `${pendVenc} vencidos`, pendVenc?"alert":"warn", ()=>{ui.view="pendientes";render();}));
+  kpis.appendChild(kpi("Equipos detenidos", String(detenidos), `${enST.length} en servicio técnico`, detenidos?"alert":"ok", ()=>{ui.view="tablero";render();}));
+  kpis.appendChild(kpi("Reprog. por firmar", String(firmar), "esperan 2 firmas", firmar?"warn":"ok", ()=>{ui.view="reprogramacion";render();}));
+  wrap.appendChild(kpis);
+
+  const cols=el("div",{class:"grid2"});
+
+  // Tablero de operatividad
+  const opCard=el("div",{class:"card"});
+  opCard.appendChild(el("h3",{}, "Equipos que necesitan atención ", el("span",{class:"count"},`(${op.length})`)));
+  if(!op.length) opCard.appendChild(el("div",{class:"small muted"},"Todos los equipos al día. ✓"));
+  else {
+    const tw=el("div",{class:"tablewrap dense",style:"max-height:340px"});
+    const t=el("table",{class:"grid"});
+    t.appendChild(el("thead",{},el("tr",{},...["Equipo","Estado","Días","Pend.",""].map(h=>el("th",{},h)))));
+    const tb=el("tbody",{});
+    for(const o of op.slice(0,60)){
+      tb.appendChild(el("tr",{class:"clickable",onclick:()=>openFicha(o.equipo.key)},
+        el("td",{}, el("div",{},esc(o.equipo.equipo||"—")), el("div",{class:"faint mono"},o.equipo.inventario||"")),
+        el("td",{}, badgeEstado(o.estado)),
+        el("td",{class:"num"}, o.dias? o.dias+"d":""),
+        el("td",{class:"num"}, o.pend? String(o.pend):""),
+        el("td",{}, o.critico>=2?el("span",{class:"badge b-bad"},"crítico"):"")
+      ));
+    }
+    t.appendChild(tb); tw.appendChild(t); opCard.appendChild(tw);
+  }
+  cols.appendChild(opCard);
+
+  // Por volcar al .xlsm
+  const pv=porVolcar();
+  const pvCard=el("div",{class:"card"});
+  pvCard.appendChild(el("h3",{}, "Por volcar al .xlsm ", el("span",{class:"count"},`(${pv.length})`),
+    el("span",{class:"spacer",style:"flex:1"}),
+    pv.length?el("button",{class:"btn sm",onclick:()=>openVolcarPanel(pv)},"Ver / copiar"):null));
+  if(!pv.length) pvCard.appendChild(el("div",{class:"small muted"},"Nada pendiente de transcribir a la planilla."));
+  else {
+    pvCard.appendChild(el("div",{class:"small muted",style:"margin-bottom:6px"},"Borradores listos para escribir en Registro_MP-2026 (subcolumna R del mes):"));
+    const tw=el("div",{class:"tablewrap dense",style:"max-height:300px"});
+    const t=el("table",{class:"grid"});
+    t.appendChild(el("thead",{},el("tr",{},...["Equipo","Mes","Código","Celda"].map(h=>el("th",{},h)))));
+    const tb=el("tbody",{});
+    for(const x of pv.slice(0,40)){
+      tb.appendChild(el("tr",{},
+        el("td",{}, el("div",{},esc(x.equipo.equipo||"")), el("div",{class:"faint mono"},x.equipo.inventario)),
+        el("td",{},MESES[x.mes]),
+        el("td",{}, badgeResultado(x.codigo)),
+        el("td",{class:"mono"}, `${x.columna}${x.fila}`)
+      ));
+    }
+    t.appendChild(tb); tw.appendChild(t); pvCard.appendChild(tw);
+  }
+  cols.appendChild(pvCard);
+  wrap.appendChild(cols);
+  return wrap;
+}
+function goEquipos(quick){ ui.view="equipos"; ui.quick=Object.assign({familia:"",servicio:"",estado:"",mes:""},quick||{}); render(); }
+function goPendientes(equipoKey){ ui.view="pendientes"; ui.pendEquipo=equipoKey||""; ui.pendEstado=""; ui.pendTipo=""; ui.pendFuente=""; recordEvent("nav","Pendientes del equipo "+(equipoByKey(equipoKey)?.inventario||equipoKey||"")); render(); }
+
+/* ----------------------------- Vista: Equipos ---------------------------- */
+const EQ_COLUMNS = [
+  { f:"idPlanilla", h:"ID" },
+  { f:"carpeta", h:"N° Carpeta" },
+  { f:"inventario", h:"N° Inventario", mono:true },
+  { f:"equipo", h:"Equipo" },
+  { f:"serie", h:"N° Serie", mono:true },
+  { f:"servicio", h:"Servicio" },
+  { f:"unidad", h:"Unidad" },
+  { f:"ubicacion", h:"Ubicación" },
+  { f:"procedencia", h:"Procedencia" },
+  { f:"marca", h:"Marca" },
+  { f:"modelo", h:"Modelo" },
+  { f:"anio", h:"Año Instalación" },
+  { f:"vidaUtil", h:"Vida Útil Residual" },
+  { f:"clasif", h:"Clasificación" },
+  { f:"fam", h:"Familia" },
+  { f:"frecuencia", h:"Frecuencia" },
+  { f:"_estado", h:"Estado", special:true },
+  { f:"_pend", h:"Tareas", special:true },
+];
+const EQ_DEFAULT_COLS = ["inventario","equipo","serie","servicio","ubicacion","_estado","_pend"];
+
+function visibleEqColumns(){
+  if(prefs.columnasEquipos && prefs.columnasEquipos.length) return EQ_COLUMNS.filter(c=>prefs.columnasEquipos.includes(c.f));
+  return EQ_COLUMNS.filter(c=>EQ_DEFAULT_COLS.includes(c.f));
+}
+function eqFieldValue(e,f){
+  if(f==="_estado") return estadoEquipo(e.key);
+  if(f==="_pend"){ const n=pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length; return n?String(n):""; }
+  return e[f]||"";
+}
+function filteredEquipos(){
+  let rows=state.equipos.slice();
+  const q=ui.search.trim().toLowerCase();
+  if(q){
+    rows=rows.filter(e=> [e.inventario,e.equipo,e.serie,e.servicio,e.marca,e.modelo].some(v=>(v||"").toLowerCase().includes(q)));
+  }
+  // quick filters
+  const qk=ui.quick;
+  if(qk.familia) rows=rows.filter(e=>e.fam===qk.familia);
+  if(qk.servicio) rows=rows.filter(e=>e.servicio===qk.servicio);
+  if(qk.estado) rows=rows.filter(e=>estadoEquipo(e.key)===qk.estado);
+  if(qk.mes!==""){ const m=parseInt(qk.mes,10); rows=rows.filter(e=> e.prog[m] || resultadoMes(e.key,m).resultado); }
+  if(qk.codigo!=null && qk.mes!==""){ const m=parseInt(qk.mes,10); rows=rows.filter(e=> matchMesCodigo(e,m,qk.codigo)); }
+  // header filters
+  for(const f in ui.headerFilters){
+    const set=ui.headerFilters[f]; if(!set||!set.size) continue;
+    rows=rows.filter(e=> set.has(String(eqFieldValue(e,f))));
+  }
+  // sort
+  if(ui.sortCol && ui.sortDir){
+    const f=ui.sortCol, dir=ui.sortDir===1?1:-1;
+    rows.sort((a,b)=>{ const va=String(eqFieldValue(a,f)), vb=String(eqFieldValue(b,f));
+      return va.localeCompare(vb,undefined,{numeric:true})*dir; });
+  }
+  return rows;
+}
+function matchMesCodigo(e,m,code){
+  const prog=e.prog[m]; const r=resultadoMes(e.key,m);
+  switch(code){
+    case "X": case "R": case "RA": case "PM": return prog===code;
+    case "sin": return prog && !r.resultado;
+    case "Si": return r.resultado==="Si";
+    case "Si-RA": return r.resultado==="Si-RA";
+    case "C1-8": return /^C[1-8]$/.test(r.resultado);
+    case "FS": return r.resultado==="FS";
+    case "No": return r.resultado==="No";
+    case "NU": return r.resultado==="NU";
+    case "Baja": return r.resultado==="Baja";
+  }
+  return false;
+}
+
+function viewEquipos(){
+  const wrap=el("div");
+  if(!state.equipos.length){ wrap.appendChild(emptyNoData()); return wrap; }
+  const rows=filteredEquipos();
+  wrap.appendChild(el("div",{class:"viewhead"},
+    el("h2",{},"Equipos"),
+    el("span",{class:"sub"}, `${rows.length} de ${state.equipos.length}`),
+    el("span",{class:"spacer"}),
+    el("button",{class:"btn sm",onclick:openColSelector},"Columnas ▾"),
+    el("button",{class:"btn sm",onclick:()=>exportTableXLSX(rows,"Equipos")},"Exportar a Excel"),
+  ));
+
+  // filtros rápidos
+  const fb=el("div",{class:"filterbar"});
+  fb.appendChild(makeQuickSelect("familia","Familia", uniqueVals("fam")));
+  fb.appendChild(makeQuickSelect("servicio","Servicio", uniqueVals("servicio")));
+  fb.appendChild(makeQuickSelect("estado","Estado", ESTADOS_EQUIPO));
+  const mesSel=el("select",{onchange:e=>{ ui.quick.mes=e.target.value; ui.quick.codigo=null; render(); }});
+  mesSel.appendChild(el("option",{value:""},"Mes…"));
+  MESES.forEach((m,i)=>{ const o=el("option",{value:String(i)},m); if(ui.quick.mes===String(i))o.selected=true; mesSel.appendChild(o); });
+  fb.appendChild(mesSel);
+  // active chips
+  for(const [k,v] of Object.entries(ui.quick)){
+    if(!v && v!==0) continue; if(k==="codigo") continue;
+    const lbl = k==="mes"? "Mes: "+MESES[parseInt(v)] : `${k}: ${v}`+(k==="mes"&&ui.quick.codigo?` · ${ui.quick.codigo}`:"");
+    fb.appendChild(el("span",{class:"chip-x"}, lbl, el("button",{onclick:()=>{ ui.quick[k]=k==="mes"?"":""; if(k==="mes")ui.quick.codigo=null; render(); }},"✕")));
+  }
+  const hfActive=Object.entries(ui.headerFilters).filter(([f,s])=>s&&s.size);
+  for(const [f,s] of hfActive){
+    const col=EQ_COLUMNS.find(c=>c.f===f);
+    fb.appendChild(el("span",{class:"chip-x"}, `${col?col.h:f}: ${s.size}`, el("button",{onclick:()=>{ delete ui.headerFilters[f]; render(); }},"✕")));
+  }
+  if(ui.sortCol) fb.appendChild(el("span",{class:"chip-x"}, "orden: "+(EQ_COLUMNS.find(c=>c.f===ui.sortCol)?.h||ui.sortCol)+(ui.sortDir===1?" ↑":" ↓"), el("button",{onclick:()=>{ ui.sortCol=null;ui.sortDir=0; render(); }},"✕")));
+  wrap.appendChild(fb);
+
+  // tabla
+  const cols=visibleEqColumns();
+  const tw=el("div",{class:"tablewrap dense",style:"max-height:calc(100vh - 250px)"});
+  const t=el("table",{class:"grid"});
+  const trh=el("tr",{});
+  for(const c of cols){
+    const inner=el("div",{class:"th-inner"});
+    inner.appendChild(el("span",{class:"sortable",onclick:()=>toggleSort(c.f)}, c.h,
+      ui.sortCol===c.f?(ui.sortDir===1?" ↑":(ui.sortDir===2?" ↓":"")):""));
+    const active=ui.headerFilters[c.f]&&ui.headerFilters[c.f].size;
+    inner.appendChild(el("span",{class:"funnel"+(active?" on":""),onclick:(ev)=>openFunnel(ev,c)},"▾"));
+    trh.appendChild(el("th",{},inner));
+  }
+  t.appendChild(el("thead",{},trh));
+  const tb=el("tbody",{});
+  for(const e of rows.slice(0,1200)){
+    const tr=el("tr",{class:"clickable",onclick:()=>openFicha(e.key)});
+    for(const c of cols){
+      if(c.f==="_estado") tr.appendChild(el("td",{}, badgeEstado(estadoEquipo(e.key))));
+      else if(c.f==="_pend"){ const n=pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length;
+        tr.appendChild(el("td",{}, n?el("span",{class:"badge "+(pendByEquipo(e.key).some(pendienteVencido)?"b-bad":"b-warn"),style:"cursor:pointer",title:"Ver pendientes de este equipo",onclick:(ev)=>{ev.stopPropagation();goPendientes(e.key);}}, n+" pend."):"")); }
+      else tr.appendChild(el("td",{class:c.mono?"mono":""}, esc(e[c.f]||"")));
+    }
+    tb.appendChild(tr);
+  }
+  t.appendChild(tb); tw.appendChild(t); wrap.appendChild(tw);
+  if(rows.length>1200) wrap.appendChild(el("div",{class:"small muted",style:"margin-top:6px"},`Mostrando 1200 de ${rows.length}. Afina los filtros.`));
+  return wrap;
+}
+function uniqueVals(f){ return [...new Set(state.equipos.map(e=>e[f]).filter(Boolean))].sort((a,b)=>String(a).localeCompare(String(b))); }
+function makeQuickSelect(key,label,vals){
+  const s=el("select",{onchange:e=>{ ui.quick[key]=e.target.value; if(e.target.value)recordEvent("filtro",`${key}=${e.target.value}`); render(); }});
+  s.appendChild(el("option",{value:""},label+"…"));
+  vals.forEach(v=>{ const o=el("option",{value:v},v); if(ui.quick[key]===v)o.selected=true; s.appendChild(o); });
+  return s;
+}
+function toggleSort(f){
+  if(ui.sortCol!==f){ ui.sortCol=f; ui.sortDir=1; }
+  else { ui.sortDir = ui.sortDir===1?2:(ui.sortDir===2?0:1); if(ui.sortDir===0) ui.sortCol=null; }
+  recordEvent("orden", ui.sortCol?`${ui.sortCol} ${ui.sortDir===1?"asc":"desc"}`:"sin orden");
+  render();
+}
+function openFunnel(ev,col){
+  ev.stopPropagation();
+  closeFunnel();
+  const vals=[...new Set(state.equipos.map(e=>String(eqFieldValue(e,col.f))).filter(v=>v!==""))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  const cur=ui.headerFilters[col.f]||new Set();
+  const menu=el("div",{class:"funnelmenu",id:"funnelMenu"});
+  const search=el("input",{class:"fm-search",placeholder:"Filtrar valores…"});
+  menu.appendChild(search);
+  const list=el("div",{});
+  function paint(filter){
+    list.innerHTML="";
+    vals.filter(v=>!filter||v.toLowerCase().includes(filter.toLowerCase())).slice(0,300).forEach(v=>{
+      const cb=el("input",{type:"checkbox"}); cb.checked=cur.has(v);
+      cb.addEventListener("change",()=>{ if(cb.checked)cur.add(v); else cur.delete(v); });
+      list.appendChild(el("label",{}, cb, el("span",{}, v||"(vacío)")));
+    });
+  }
+  paint("");
+  search.addEventListener("input",()=>paint(search.value));
+  menu.appendChild(list);
+  const actions=el("div",{class:"fm-actions"});
+  actions.appendChild(el("button",{class:"btn sm primary",onclick:()=>{ if(cur.size)ui.headerFilters[col.f]=cur; else delete ui.headerFilters[col.f]; closeFunnel(); render(); }},"Aplicar"));
+  actions.appendChild(el("button",{class:"btn sm",onclick:()=>{ delete ui.headerFilters[col.f]; closeFunnel(); render(); }},"Limpiar"));
+  menu.appendChild(actions);
+  document.body.appendChild(menu);
+  const r=ev.target.getBoundingClientRect();
+  menu.style.left=Math.min(r.left,window.innerWidth-230)+"px";
+  menu.style.top=(r.bottom+4)+"px";
+  setTimeout(()=>document.addEventListener("click",funnelOutside),0);
+}
+function funnelOutside(e){ const m=$("#funnelMenu"); if(m && !m.contains(e.target)){ closeFunnel(); } }
+function closeFunnel(){ const m=$("#funnelMenu"); if(m)m.remove(); document.removeEventListener("click",funnelOutside); }
+
+function openColSelector(){
+  let cur = (prefs.columnasEquipos&&prefs.columnasEquipos.length)?prefs.columnasEquipos.slice():EQ_DEFAULT_COLS.slice();
+  const body=el("div");
+  body.appendChild(el("div",{class:"small muted",style:"margin-bottom:8px"},"Elige qué columnas ver en la tabla de Equipos (se recuerda). El orden sigue el de esta lista."));
+  const quick=el("div",{class:"tag-row",style:"margin-bottom:10px"});
+  const list=el("div",{class:"colsel"});
+  function paint(){
+    list.innerHTML="";
+    EQ_COLUMNS.forEach(c=>{
+      const cb=el("input",{type:"checkbox"}); cb.checked=cur.includes(c.f);
+      cb.addEventListener("change",()=>{ if(cb.checked){ if(!cur.includes(c.f))cur.push(c.f);} else { const i=cur.indexOf(c.f); if(i>=0)cur.splice(i,1);} });
+      list.appendChild(el("label",{class:"check"}, cb, c.h));
+    });
+  }
+  quick.appendChild(el("button",{class:"btn sm",onclick:()=>{ cur=EQ_COLUMNS.map(c=>c.f); paint(); }},"Todas"));
+  quick.appendChild(el("button",{class:"btn sm",onclick:()=>{ cur=["idPlanilla","carpeta","inventario","equipo","servicio","unidad","ubicacion","procedencia","marca","modelo","serie","anio","vidaUtil","clasif"]; paint(); }},"Ficha completa"));
+  quick.appendChild(el("button",{class:"btn sm",onclick:()=>{ cur=EQ_DEFAULT_COLS.slice(); paint(); }},"Mínimas"));
+  body.appendChild(quick);
+  paint(); body.appendChild(list);
+  openDrawer("Columnas de la tabla", body, [
+    {label:"Restaurar", cls:"", act:async()=>{ prefs.columnasEquipos=null; await persistPrefs(); closeDrawer(); render(); }},
+    {label:"Guardar", cls:"primary", act:async()=>{ prefs.columnasEquipos = EQ_COLUMNS.filter(c=>cur.includes(c.f)).map(c=>c.f); await persistPrefs(); closeDrawer(); render(); toast("Columnas guardadas."); }}
+  ]);
+}
+
+/* --------------------------- Ficha de equipo ----------------------------- */
+function openFicha(key){
+  const e=equipoByKey(key); if(!e) return;
+  fichaReturnKey=null; // la ficha es ahora el contexto
+  recordEvent("ficha","Abrió equipo "+(e.inventario||"")+" — "+(e.equipo||""));
+  const body=el("div");
+  // navegación anterior/siguiente dentro de la lista filtrada actual
+  const lista=filteredEquipos(); const idx=lista.findIndex(x=>x.key===key);
+  if(idx>=0 && lista.length>1){
+    body.appendChild(el("div",{class:"tag-row",style:"margin-bottom:10px;align-items:center"},
+      el("button",{class:"btn sm",disabled: idx<=0?true:null, onclick:()=>{ if(idx>0) openFicha(lista[idx-1].key); }},"◀ Anterior"),
+      el("span",{class:"pill"},`${idx+1} / ${lista.length}`),
+      el("button",{class:"btn sm",disabled: idx>=lista.length-1?true:null, onclick:()=>{ if(idx<lista.length-1) openFicha(lista[idx+1].key); }},"Siguiente ▶"),
+      el("span",{class:"faint small"},"en la lista filtrada")
+    ));
+  }
+  // datos
+  const est=estadoEquipo(key);
+  body.appendChild(el("div",{class:"tag-row",style:"margin-bottom:10px"}, badgeEstado(est),
+    el("span",{class:"pill"},"Familia: "+(e.fam||"—")), e.frecuencia?el("span",{class:"pill"},"MP "+e.frecuencia):null));
+  const kv=el("dl",{class:"kv"});
+  const add=(k,v)=>{ kv.appendChild(el("dt",{},k)); kv.appendChild(el("dd",{}, v||"—")); };
+  add("ID", e.idPlanilla);
+  add("N° Carpeta", e.carpeta);
+  add("N° Inventario", el("span",{class:"mono"},e.inventario||"—"));
+  add("N° Serie", el("span",{class:"mono"},e.serie||"—"));
+  add("Equipo", e.equipo); add("Servicio", e.servicio); add("Unidad", e.unidad);
+  add("Ubicación", e.ubicacion); add("Marca / Modelo", `${e.marca||""} ${e.modelo||""}`.trim());
+  add("Procedencia", e.procedencia);
+  add("Año Instalación", e.anio); add("Vida Útil Residual", e.vidaUtil);
+  add("Clasificación", e.clasif);
+  body.appendChild(kv);
+
+  // programación anual
+  const prog=el("div",{style:"margin-top:14px"});
+  prog.appendChild(el("div",{class:"field-label small muted",style:"font-weight:600;margin-bottom:6px"},"PROGRAMACIÓN ANUAL"));
+  const ptab=el("div",{class:"tag-row"});
+  for(let m=0;m<12;m++){
+    const p=e.prog[m]; const r=resultadoMes(key,m);
+    if(!p && !r.resultado) continue;
+    ptab.appendChild(el("span",{class:"pill"}, `${MESES[m]}: `, p?el("b",{},p):"", r.resultado?el("span",{}," → "):null, r.resultado?badgeResultado(r.resultado):null));
+  }
+  prog.appendChild(ptab);
+  body.appendChild(prog);
+
+  // acciones (abren su editor y vuelven a la ficha al cerrar)
+  body.appendChild(el("div",{class:"tag-row",style:"margin:14px 0"},
+    el("button",{class:"btn sm primary",onclick:()=>{ fichaReturnKey=key; openMPForm(null,key); }},"+ Registrar MP"),
+    el("button",{class:"btn sm",onclick:()=>{ fichaReturnKey=key; openPendForm(null,{equipoKey:key}); }},"+ Pendiente"),
+    el("button",{class:"btn sm",onclick:()=>{ fichaReturnKey=key; openCorrSubevento(key); }},"+ Correctivo"),
+  ));
+
+  // Pendientes del equipo — inline, sin salir de la ficha
+  const pendBox=el("div"); body.appendChild(pendBox);
+  function paintPend(){
+    pendBox.innerHTML="";
+    const abiertos=pendByEquipo(key).filter(p=>p.estado!=="Completado");
+    const card=el("div",{class:"card",style:"padding:10px 12px"});
+    card.appendChild(el("h3",{style:"margin-bottom:8px"},"Pendientes del equipo ",el("span",{class:"count"},`(${abiertos.length} abiertos)`),
+      el("span",{class:"spacer",style:"flex:1"}),
+      el("button",{class:"btn sm ghost",onclick:()=>{ fichaReturnKey=key; goPendientes(key); }},"Ver todos")));
+    if(!abiertos.length) card.appendChild(el("div",{class:"small muted"},"Sin pendientes abiertos. ✓"));
+    else {
+      const tw=el("div",{class:"tablewrap dense"}); const t=el("table",{class:"grid"});
+      t.appendChild(el("thead",{},el("tr",{},...["Tipo","Compromiso","En espera de",""].map(h=>el("th",{},h)))));
+      const tb=el("tbody",{});
+      for(const p of abiertos){ const atraso=diasAtraso(p);
+        tb.appendChild(el("tr",{},
+          el("td",{}, el("span",{class:"badge "+origenCls(PEND_TIPOS[p.tipo]?.origen)},PEND_TIPOS[p.tipo]?.label||p.tipo)),
+          el("td",{}, fmtDate(p.fechaCompromiso), atraso?el("span",{class:"badge b-bad",style:"margin-left:5px"},atraso+"d"):null),
+          el("td",{class:"small"}, esc(p.enEsperaDe||"")),
+          el("td",{}, el("div",{class:"tag-row"},
+            el("button",{class:"btn sm",title:"Marcar completado",onclick:async()=>{ p.estado="Completado"; p.fechaCompletado=todayISO(); await markDirty("usuario"); recordEvent("click","Completar pendiente inline (ficha)"); paintPend(); paintHist(); }},"✓ Completar"),
+            el("button",{class:"btn sm ghost",onclick:()=>{ fichaReturnKey=key; openPendForm(p); }},"Editar")
+          ))
+        ));
+      }
+      t.appendChild(tb); tw.appendChild(t); card.appendChild(tw);
+    }
+    pendBox.appendChild(card);
+  }
+  paintPend();
+
+  // Historial unificado — filtrable, con columnas configurables y edición por fila
+  body.appendChild(el("hr",{class:"soft"}));
+  const histBox=el("div"); body.appendChild(histBox);
+  const histState={ grupo:"", q:"", showCols:false };
+  function paintHist(){
+    histBox.innerHTML="";
+    const head=el("div",{class:"viewhead",style:"margin-bottom:8px"},
+      el("h2",{style:"font-size:15px"},"Historial del equipo"),
+      el("span",{class:"spacer"}),
+      el("button",{class:"btn sm",onclick:()=>{ histState.showCols=!histState.showCols; paintHist(); }},"Columnas ▾"));
+    histBox.appendChild(head);
+    // selector de columnas inline
+    if(histState.showCols){
+      const sel=(prefs.columnasHistorial&&prefs.columnasHistorial.length)?prefs.columnasHistorial.slice():HIST_DEFAULT_COLS.slice();
+      const panel=el("div",{class:"card",style:"padding:10px 12px"});
+      const row=el("div",{class:"tag-row"});
+      HIST_COLUMNS.forEach(c=>{
+        const cb=el("input",{type:"checkbox"}); cb.checked=sel.includes(c.f);
+        cb.addEventListener("change",async()=>{ const s=new Set((prefs.columnasHistorial&&prefs.columnasHistorial.length)?prefs.columnasHistorial:HIST_DEFAULT_COLS);
+          if(cb.checked)s.add(c.f); else s.delete(c.f);
+          prefs.columnasHistorial=HIST_COLUMNS.filter(x=>s.has(x.f)).map(x=>x.f); await persistPrefs(); paintHist(); });
+        row.appendChild(el("label",{class:"check",style:"margin:0 10px 0 0"}, cb, c.h));
+      });
+      panel.appendChild(row); histBox.appendChild(panel);
+    }
+    // filtros
+    const fb=el("div",{class:"filterbar"});
+    [["","Todo"],["MP","MP"],["Pendiente","Pendientes"],["Correctivo","Correctivos"]].forEach(([v,t])=>{
+      fb.appendChild(el("button",{class:"btn sm"+(histState.grupo===v?" primary":""),onclick:()=>{ histState.grupo=v; paintHist(); }},t));
+    });
+    const qi=el("input",{placeholder:"Filtrar en el historial…",value:histState.q,style:"flex:1;min-width:120px"});
+    qi.addEventListener("input",()=>{ histState.q=qi.value; clearTimeout(qi._h); qi._h=setTimeout(paintHist,200); });
+    fb.appendChild(qi);
+    histBox.appendChild(fb);
+    // datos filtrados
+    let items=buildTimeline(key);
+    if(histState.grupo) items=items.filter(i=>i.grupo===histState.grupo);
+    if(histState.q.trim()){ const q=histState.q.toLowerCase();
+      items=items.filter(i=>[i.tipo,i.titulo,i.detalle,i.ejecutor,i.estadoEquipo,i.resultado].some(v=>(v||"").toLowerCase().includes(q))); }
+    if(!items.length){ histBox.appendChild(el("div",{class:"small muted"},"Sin eventos para este filtro.")); return; }
+    const cols=visibleHistColumns();
+    const tw=el("div",{class:"tablewrap dense"}); const t=el("table",{class:"grid timeline"});
+    const trh=el("tr",{}); cols.forEach(c=>trh.appendChild(el("th",{},c.h))); trh.appendChild(el("th",{},""));
+    t.appendChild(el("thead",{},trh));
+    const tb=el("tbody",{});
+    for(const it of items){
+      const tr=el("tr",{});
+      for(const c of cols){
+        if(c.f==="fecha") tr.appendChild(el("td",{class:"mono"}, it.monthOnly ? (MESES[parseInt(it.fecha.slice(5,7),10)-1]+" "+it.fecha.slice(0,4)) : fmtDate(it.fecha)));
+        else if(c.f==="titulo") tr.appendChild(el("td",{}, el("span",{class:"tl-ico "+it.cls},it.ico+" "), it.titulo));
+        else if(c.f==="detalle") tr.appendChild(el("td",{class:"small"}, esc(it.detalle||"")));
+        else if(c.f==="estadoEquipo") tr.appendChild(el("td",{}, it.estadoEquipo?badgeEstado(it.estadoEquipo):""));
+        else if(c.f==="resultado") tr.appendChild(el("td",{}, it.resultado?(/^(Si|Si-RA|C[1-8]|FS|No|NU|Baja)$/.test(it.resultado)?badgeResultado(it.resultado):el("span",{class:"small"},esc(it.resultado))):""));
+        else tr.appendChild(el("td",{class:"small"}, esc(it[c.f]||"")));
+      }
+      tr.appendChild(el("td",{}, el("button",{class:"btn sm ghost",title: it.edit.kind==="mp_planilla"?"Registrar con fecha/detalle":"Editar este registro", onclick:()=>abrirEdicionHist(it,key)}, it.edit.kind==="mp_planilla"?"Registrar":"Editar")));
+      tb.appendChild(tr);
+    }
+    t.appendChild(tb); tw.appendChild(t); histBox.appendChild(tw);
+  }
+  paintHist();
+
+  openDrawer((e.equipo||"Equipo")+" · "+(e.inventario||""), body, [], {wide:true});
+}
+function buildTimeline(key){
+  const items=[];
+  const mesesConApp=new Set();
+  for(const m of mpByEquipo(key)){
+    const mm=mesDeFecha(m.fecha); if(mm!=null) mesesConApp.add(mm);
+    items.push({ fecha:m.fecha||m.creado, grupo:"MP", tipo:m.tipoRegistro==="Borrador"?"MP (borrador)":"MP", cls:"tl-mp", ico:"✓",
+      titulo:`MP ${m.resultado?RESULTADOS[m.resultado]||m.resultado:"(sin resultado)"}`,
+      detalle:[m.tipoMantenimiento, m.observaciones].filter(Boolean).join(" · "),
+      ejecutor:m.ejecutor||"", estadoEquipo:m.estadoEquipo||"", resultado:m.resultado||"",
+      edit:{kind:"mp",id:m.id} });
+  }
+  // Resultados oficiales de la planilla (.xlsm): solo mes, sin día exacto.
+  const anio = (state.meta&&state.meta.fechaCarga? String(state.meta.fechaCarga).slice(0,4):"2026");
+  for(const r of regsByEquipo(key)){
+    if(!r.resultado) continue;
+    if(mesesConApp.has(r.mes)) continue; // ya hay una MP de la app ese mes (con fecha exacta)
+    items.push({ fecha:`${anio}-${String(r.mes+1).padStart(2,"0")}-15`, monthOnly:true, grupo:"MP", tipo:"MP oficial", cls:"tl-mp", ico:"▣",
+      titulo:`MP ${RESULTADOS[r.resultado]||r.resultado} · planilla oficial`,
+      detalle:`Registrada en ${MESES_LARGO[r.mes]} ${anio} (el .xlsm guarda el mes, no el día exacto)`,
+      ejecutor:"", estadoEquipo:estadoDeResultado(r.resultado)||"", resultado:r.resultado,
+      edit:{kind:"mp_planilla", mes:r.mes} });
+  }
+  for(const p of pendByEquipo(key)){
+    items.push({ fecha:p.creado, grupo:"Pendiente", tipo:`Pendiente · ${PEND_TIPOS[p.tipo]?.label||p.tipo}`, cls:"tl-pend", ico:"◷",
+      titulo:`Pendiente ${PEND_TIPOS[p.tipo]?.label||p.tipo} ${p.estado==="Completado"?"(completado)":"creado"}`,
+      detalle:p.descripcion||"", ejecutor:p.respEjecutivo||"", estadoEquipo:"", resultado:p.estado||"",
+      edit:{kind:"pend",id:p.id} });
+    for(const s of (p.seguimiento||[])) items.push({ fecha:s.fecha, grupo:"Pendiente", tipo:"Seguimiento", cls:"tl-pend", ico:"·",
+      titulo:"Seguimiento", detalle:s.texto, ejecutor:s.autor||"", estadoEquipo:"", resultado:"", edit:{kind:"pend",id:p.id} });
+  }
+  for(const c of corrByEquipo(key)){
+    items.push({ fecha:c.fechaDocumento||c.creado, grupo:"Correctivo", tipo:"Correctivo · OT", cls:"tl-corr", ico:"⚒",
+      titulo:`Correctivo abierto (Folio ${c.folioSigem||"?"})`, detalle:c.requerimiento||"",
+      ejecutor:c.tecnico||"", estadoEquipo:c.estadoEquipo||"", resultado:c.estadoEvento||"", edit:{kind:"corr",id:c.id} });
+    for(const a of (c.avances||[])) items.push({ fecha:a.fecha||a.registrado, grupo:"Correctivo", tipo:`Correctivo · ${a.tipo}`, cls:"tl-corr", ico:"·",
+      titulo:a.tipo, detalle:[a.numero,a.empresa,a.detalle].filter(Boolean).join(" · "),
+      ejecutor:a.responsable||"", estadoEquipo:a.estadoEquipoVisita||"", resultado:"", edit:{kind:"corr",id:c.id} });
+    if(c.fechaCierre) items.push({ fecha:c.fechaCierre, grupo:"Correctivo", tipo:"Correctivo · cierre", cls:"tl-corr", ico:"⚒",
+      titulo:"Correctivo cerrado", detalle:"", ejecutor:"", estadoEquipo:c.estadoEquipo||"", resultado:"Cerrado", edit:{kind:"corr",id:c.id} });
+  }
+  return items.filter(i=>i.fecha).sort((a,b)=> String(b.fecha).slice(0,10).localeCompare(String(a.fecha).slice(0,10)));
+}
+
+// Columnas configurables del historial del equipo
+const HIST_COLUMNS = [
+  { f:"fecha", h:"Fecha" }, { f:"tipo", h:"Tipo" }, { f:"titulo", h:"Qué pasó" },
+  { f:"detalle", h:"Detalle" }, { f:"ejecutor", h:"Ejecutor" }, { f:"estadoEquipo", h:"Estado equipo" }, { f:"resultado", h:"Resultado" }
+];
+const HIST_DEFAULT_COLS = ["fecha","tipo","titulo","detalle"];
+function visibleHistColumns(){
+  const sel=(prefs.columnasHistorial&&prefs.columnasHistorial.length)?prefs.columnasHistorial:HIST_DEFAULT_COLS;
+  return HIST_COLUMNS.filter(c=>sel.includes(c.f));
+}
+function abrirEdicionHist(it, key){
+  fichaReturnKey=key; // volver a la ficha al cerrar el editor
+  if(it.edit.kind==="mp"){ const m=state.detalleMP.find(x=>x.id===it.edit.id); if(m) openMPForm(m); else fichaReturnKey=null; }
+  else if(it.edit.kind==="mp_planilla"){ openMPForm(null, key, it.edit.mes); }
+  else if(it.edit.kind==="pend"){ const p=state.pendientes.find(x=>x.id===it.edit.id); if(p) openPendForm(p); else fichaReturnKey=null; }
+  else if(it.edit.kind==="corr"){ openCorrExpediente(it.edit.id); }
+}
+
+/* ------------------------- Vista: Mant. Preventivo ----------------------- */
+function viewPreventivo(){
+  const wrap=el("div");
+  if(!state.equipos.length){ wrap.appendChild(emptyNoData()); return wrap; }
+  wrap.appendChild(el("div",{class:"viewhead"},
+    el("h2",{},"Mantenimiento Preventivo"),
+    el("span",{class:"spacer"}),
+    el("button",{class:"btn sm",onclick:()=>exportTableXLSX(state.detalleMP.map(mpRowForExport),"Mantenciones")},"Exportar a Excel"),
+    el("button",{class:"btn sm primary",onclick:()=>openMPForm(null,null)},"+ Registrar MP"),
+  ));
+  const q=ui.search.trim().toLowerCase();
+  const matchEq=(e)=> !q || [e.inventario,e.equipo,e.serie,e.servicio].some(v=>(v||"").toLowerCase().includes(q));
+  if(q) wrap.appendChild(el("div",{class:"filterbar"}, el("span",{class:"chip-x"}, `Búsqueda: ${ui.search}`, el("button",{onclick:()=>{ ui.search=""; $("#globalSearch").value=""; render(); }},"✕"))));
+
+  // MP del mes sin resultado
+  const sinRes=mpSinResultado().filter(x=>matchEq(x.equipo));
+  const c1=el("div",{class:"card"});
+  c1.appendChild(el("h3",{},"MP sin resultado por gestionar ",el("span",{class:"count"},`(${sinRes.length})`)));
+  if(!sinRes.length) c1.appendChild(el("div",{class:"small muted"},"Sin MP del año pendientes de resultado."));
+  else {
+    const tw=el("div",{class:"tablewrap dense",style:"max-height:280px"});
+    const t=el("table",{class:"grid"});
+    t.appendChild(el("thead",{},el("tr",{},...["Equipo","Servicio","Mes","",""].map(h=>el("th",{},h)))));
+    const tb=el("tbody",{});
+    for(const x of sinRes.slice(0,80)){
+      tb.appendChild(el("tr",{},
+        el("td",{class:"clickable",onclick:()=>openFicha(x.equipo.key)}, el("div",{},esc(x.equipo.equipo)), el("div",{class:"faint mono"},x.equipo.inventario)),
+        el("td",{},esc(x.equipo.servicio)),
+        el("td",{},MESES[x.mes]),
+        el("td",{}, x.vencida?el("span",{class:"badge b-bad"},"vencida"):el("span",{class:"badge b-warn"},"del mes")),
+        el("td",{}, el("button",{class:"btn sm",onclick:()=>openMPForm(null,x.equipo.key,x.mes)},"Registrar"))
+      ));
+    }
+    t.appendChild(tb); tw.appendChild(t); c1.appendChild(tw);
+  }
+  wrap.appendChild(c1);
+
+  // Mantenciones registradas en la app
+  const mlist=state.detalleMP.filter(m=>{ if(!q) return true; const e=equipoByKey(m.equipoKey); return e?matchEq(e):String(m.equipoKey).toLowerCase().includes(q); });
+  const c2=el("div",{class:"card"});
+  c2.appendChild(el("h3",{},"Mantenciones registradas en la app ",el("span",{class:"count"},`(${mlist.length}${q?" de "+state.detalleMP.length:""})`)));
+  if(!mlist.length) c2.appendChild(el("div",{class:"small muted"},q?"Sin mantenciones para esta búsqueda.":"Aún no registras mantenciones."));
+  else {
+    const tw=el("div",{class:"tablewrap dense",style:"max-height:420px"});
+    const t=el("table",{class:"grid"});
+    t.appendChild(el("thead",{},el("tr",{},...["Fecha","Equipo","Resultado","Ejecutor","Tipo","Estado",""].map(h=>el("th",{},h)))));
+    const tb=el("tbody",{});
+    for(const m of mlist.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).slice(0,500)){
+      const e=equipoByKey(m.equipoKey);
+      tb.appendChild(el("tr",{},
+        el("td",{class:"mono"},fmtDate(m.fecha)),
+        el("td",{class:"clickable",onclick:()=>e&&openFicha(e.key)}, e?esc(e.equipo):m.equipoKey, el("div",{class:"faint mono"}, e?e.inventario:"")),
+        el("td",{}, badgeResultado(m.resultado)),
+        el("td",{class:"small"},esc(m.ejecutor||"")),
+        el("td",{class:"small"},esc(m.tipoMantenimiento||"")),
+        el("td",{}, m.tipoRegistro==="Oficial"?el("span",{class:"badge b-ok"},"Oficial"):el("span",{class:"badge b-draft"},"Borrador")),
+        el("td",{}, el("button",{class:"btn sm ghost",onclick:()=>openMPForm(m)},"Editar"))
+      ));
+    }
+    t.appendChild(tb); tw.appendChild(t); c2.appendChild(tw);
+    if(mlist.length>500) c2.appendChild(el("div",{class:"small muted",style:"margin-top:6px"},`Mostrando 500 de ${mlist.length} (las más recientes). Usa la búsqueda o «Exportar a Excel» para ver todas.`));
+  }
+  wrap.appendChild(c2);
+  return wrap;
+}
+function mpRowForExport(m){ const e=equipoByKey(m.equipoKey)||{}; return {
+  Fecha:m.fecha, Inventario:e.inventario||"", Equipo:e.equipo||"", Servicio:e.servicio||"",
+  Resultado:m.resultado, Ejecutor:m.ejecutor, Tipo:m.tipoMantenimiento, Estado:m.estadoEquipo, Registro:m.tipoRegistro, Observaciones:m.observaciones }; }
+
+function openMPForm(mp, presetKey, presetMes){
+  const isNew=!mp;
+  mp = mp || { id:uid(), creado:todayISO(), equipoKey:presetKey||"", fecha:todayISO(), programacion:"X",
+    ejecutor:prefs.ultimoEjecutor||"", resultado:"", observaciones:"", estadoEquipo:"Operativo",
+    gestionPendiente:false, tipoMantenimiento:prefs.ultimoTipoMant||"Interno", ingenieroExterno:prefs.ultimoIngeniero||"",
+    empresaExterna:prefs.ultimaEmpresa||"", tipoRegistro:"Borrador" };
+  const f=Object.assign({},mp);
+  const body=el("div");
+  // equipo selector
+  const eqField=el("div",{class:"field"});
+  eqField.appendChild(el("label",{},"Equipo (N° Inventario o Serie) *"));
+  const eqInput=el("input",{list:"eqlist",placeholder:"Escribe inventario o serie…",value: f.equipoKey?equipoLabel(f.equipoKey):""});
+  eqField.appendChild(eqInput);
+  const dl=el("datalist",{id:"eqlist"});
+  state.equipos.slice(0,3000).forEach(e=> dl.appendChild(el("option",{value:`${e.inventario} · ${e.equipo} · ${e.serie}`})));
+  eqField.appendChild(dl);
+  const eqInfo=el("div",{class:"hint"}, f.equipoKey?equipoLabel(f.equipoKey):"");
+  eqField.appendChild(eqInfo);
+  eqInput.addEventListener("change",()=>{ const e=matchEquipo(eqInput.value); if(e){ f.equipoKey=e.key; eqInfo.textContent=`${e.equipo} · ${e.servicio}`; prefillProg(); } });
+  body.appendChild(eqField);
+
+  const progField=selField("Programación","programacion",f,Object.keys(PROG_CODES).map(k=>({v:k,t:k+" — "+PROG_CODES[k]})));
+  const progSel=progField.querySelector("select");
+  // Pre-rellena la Programación con el código real del equipo para el mes de la fecha.
+  function prefillProg(){ const eq=equipoByKey(f.equipoKey); const mes=mesDeFecha(f.fecha); if(eq && mes!=null && eq.prog[mes]){ f.programacion=eq.prog[mes]; progSel.value=eq.prog[mes]; } }
+  const fechaField=el("div",{class:"field"}); fechaField.appendChild(el("label",{},"Fecha *"));
+  const fechaInput=el("input",{type:"date",value:(f.fecha||"").slice(0,10)});
+  fechaInput.addEventListener("input",()=>{ f.fecha=fechaInput.value; prefillProg(); });
+  fechaField.appendChild(fechaInput);
+  body.appendChild(frow([ progField, fechaField ]));
+  // pre-relleno inicial: por el mes indicado (MP pendiente) o por el mes de la fecha
+  if(presetMes!=null){ const eq=equipoByKey(f.equipoKey); if(eq && eq.prog[presetMes]){ f.programacion=eq.prog[presetMes]; progSel.value=eq.prog[presetMes]; } }
+  else if(isNew) prefillProg();
+  body.appendChild(frow([
+    selField("Ejecutor *","ejecutor",f,EJECUTORES.map(x=>({v:x,t:x}))),
+    selField("Resultado *","resultado",f,[{v:"",t:"— elegir —"}].concat(Object.keys(RESULTADOS).map(k=>({v:k,t:k+" — "+RESULTADOS[k]}))),()=>refreshMP()),
+  ]));
+  const dyn=el("div"); body.appendChild(dyn);
+  body.appendChild(frow([
+    selField("Tipo mantenimiento","tipoMantenimiento",f,[{v:"Interno",t:"Interno"},{v:"Externo",t:"Externo"}],()=>refreshMP()),
+    selField("Estado del equipo","estadoEquipo",f,ESTADOS_EQUIPO.map(x=>({v:x,t:x}))),
+  ]));
+  const extDyn=el("div"); body.appendChild(extDyn);
+  body.appendChild(txtField("Observaciones","observaciones",f));
+  const chkGP=el("label",{class:"check"}); const cbGP=el("input",{type:"checkbox"}); cbGP.checked=!!f.gestionPendiente;
+  cbGP.addEventListener("change",()=>{ f.gestionPendiente=cbGP.checked; });
+  chkGP.appendChild(cbGP); chkGP.appendChild(document.createTextNode("Quedó gestión pendiente (crea pendiente automático)"));
+  body.appendChild(chkGP);
+  const chkOf=el("label",{class:"check"}); const cbOf=el("input",{type:"checkbox"}); cbOf.checked=f.tipoRegistro==="Oficial";
+  cbOf.addEventListener("change",()=>{ f.tipoRegistro=cbOf.checked?"Oficial":"Borrador"; });
+  chkOf.appendChild(cbOf); chkOf.appendChild(document.createTextNode("Marcar como Oficial (ya está en la planilla)"));
+  body.appendChild(chkOf);
+
+  function refreshMP(){
+    // causal info
+    dyn.innerHTML="";
+    if(/^C[1-8]$/.test(f.resultado)){
+      const wrn = REPRO_30DIAS.has(f.resultado) ? `Reprogramación ≤30 días — se creará pendiente de reprogramación.` :
+        (REPRO_SIN_FECHA.has(f.resultado)? `Sin fecha (depende de un tercero). Estado: ${estadoDeResultado(f.resultado)||""}.`:"");
+      dyn.appendChild(el("div",{class:"banner info",style:"margin:0 0 12px"}, `${f.resultado}: ${CAUSALES[f.resultado]}. ${wrn}`));
+    }
+    extDyn.innerHTML="";
+    if(f.tipoMantenimiento==="Externo"){
+      extDyn.appendChild(frow([
+        comboField("Ingeniero externo","ingenieroExterno",f,state.ingenieros),
+        comboField("Empresa","empresaExterna",f,state.empresas),
+      ]));
+    }
+  }
+  refreshMP();
+
+  openDrawer(isNew?"Registrar MP":"Editar MP", body, [
+    {label:"Cancelar",act:closeDrawer},
+    {label:"Guardar", cls:"primary", act:async()=>{
+      if(!f.equipoKey){ toast("Elige el equipo."); return; }
+      if(!f.fecha||!f.ejecutor||!f.resultado){ toast("Fecha, ejecutor y resultado son obligatorios."); return; }
+      // estado implícito por causal
+      const eImpl=estadoDeResultado(f.resultado, f); if(eImpl && !/^Si/.test(f.resultado)) f.estadoEquipo=eImpl;
+      f.actualizado=todayISO();
+      if(isNew) state.detalleMP.push(f);
+      else { const i=state.detalleMP.findIndex(m=>m.id===f.id); if(i>=0) state.detalleMP[i]=f; }
+      prefs.ultimoEjecutor=f.ejecutor; prefs.ultimoTipoMant=f.tipoMantenimiento;
+      if(f.ingenieroExterno){ prefs.ultimoIngeniero=f.ingenieroExterno; if(!state.ingenieros.includes(f.ingenieroExterno))state.ingenieros.push(f.ingenieroExterno);}
+      if(f.empresaExterna){ prefs.ultimaEmpresa=f.empresaExterna; if(!state.empresas.includes(f.empresaExterna))state.empresas.push(f.empresaExterna);}
+      await persistPrefs();
+      // pendiente automático (B.8)
+      // Pendiente automático (§9/§B.8): SIEMPRE con causal C1–C8 (reprogramación);
+      // con "gestión pendiente" marcado sin causal → protocolo (interno/externo).
+      if(isNew && (f.gestionPendiente || /^C[1-8]$/.test(f.resultado))) crearPendienteAuto(f);
+      await markDirty("usuario"); closeDrawer(); render(); toast("MP guardada.");
+    }}
+  ]);
+}
+function crearPendienteAuto(mp){
+  const yaExiste=state.pendientes.some(p=>p.origenMP===mp.id);
+  if(yaExiste) return;
+  let tipo, origen="preventiva", tareas=[];
+  if(/^C[1-8]$/.test(mp.resultado)){
+    tipo="reprogramacion";
+    tareas=[ {texto:"generar reporte",hecha:false}, {texto:"imprimir reporte",hecha:false},
+             {texto:"firma del supervisor",hecha:false}, {texto:"firma del jefe de equipos",hecha:false} ];
+  } else {
+    tipo = mp.tipoMantenimiento==="Externo"?"protocolo_externo":"protocolo_interno";
+    tareas = tipo==="protocolo_externo"
+      ? [ {texto:"solicitar reporte al proveedor",hecha:false}, {texto:"recibir y archivar reporte",hecha:false} ]
+      : [ {texto:"completar reporte interno de la MP",hecha:false} ];
+  }
+  state.pendientes.push({
+    id:uid(), creado:todayISO(), origenMP:mp.id, equipoKey:mp.equipoKey, origen, tipo,
+    causal:/^C[1-8]$/.test(mp.resultado)?mp.resultado:"", fechaReporte:mp.fecha,
+    fechaCompromiso:mp.fecha, prioridad:"Media", situacion:"",
+    respEjecutivo:mp.ejecutor||"", respAdministrativo:RESP_ADMIN_DEFAULT, enEsperaDe:"",
+    descripcion:`Asociado a MP del ${fmtDate(mp.fecha)}${mp.resultado?` (resultado ${mp.resultado})`:""}.`,
+    tareas, seguimiento:[], empresa:mp.empresaExterna||"",
+    estado:"Abierto", fechaCompletado:""
+  });
+  toast("Pendiente automático creado.");
+}
+
+/* ------------------------- Vista: Mant. Correctivo ----------------------- */
+function viewCorrectivo(){
+  const wrap=el("div");
+  if(!state.equipos.length){ wrap.appendChild(emptyNoData()); return wrap; }
+  wrap.appendChild(el("div",{class:"viewhead"},
+    el("h2",{},"Mantenimiento Correctivo"),
+    el("span",{class:"sub"},"Expedientes por Folio SIGEM"),
+    el("span",{class:"spacer"}),
+    el("button",{class:"btn sm",onclick:()=>exportTableXLSX(state.correctivos.map(corrRowForExport),"Correctivos")},"Exportar a Excel"),
+    el("button",{class:"btn sm primary",onclick:()=>openCorrSubevento(null)},"+ Registrar sub-evento"),
+  ));
+  body: {
+    if(!state.correctivos.length){ wrap.appendChild(el("div",{class:"empty"}, el("div",{class:"big"},"⚒"), "Sin expedientes correctivos.")); break body; }
+    // filtro por la búsqueda global (folio, equipo, inventario, serie, técnico, requerimiento)
+    let lista=state.correctivos.slice();
+    const q=ui.search.trim().toLowerCase();
+    if(q){ lista=lista.filter(c=>{ const e=equipoByKey(c.equipoKey)||{};
+      return [c.folioSigem,e.equipo,e.inventario,e.serie,c.tecnico,c.requerimiento].some(v=>(v||"").toLowerCase().includes(q)); }); }
+    if(q) wrap.appendChild(el("div",{class:"filterbar"}, el("span",{class:"chip-x"}, `Búsqueda: ${ui.search} · ${lista.length} de ${state.correctivos.length}`, el("button",{onclick:()=>{ ui.search=""; $("#globalSearch").value=""; render(); }},"✕"))));
+    if(!lista.length){ wrap.appendChild(el("div",{class:"empty"}, el("div",{class:"big"},"⚒"), "Sin expedientes para esta búsqueda.")); break body; }
+    const incompletos=lista.filter(c=>!c.otCompleta).length;
+    if(incompletos) wrap.appendChild(el("div",{class:"banner warn"}, `⚠ ${incompletos} expediente(s) con la OT por completar.`));
+    const tw=el("div",{class:"tablewrap dense"});
+    const t=el("table",{class:"grid"});
+    t.appendChild(el("thead",{},el("tr",{},...["Folio SIGEM","Equipo","Apertura","Estado equipo","Avances","Estado",""].map(h=>el("th",{},h)))));
+    const tb=el("tbody",{});
+    for(const c of lista.sort((a,b)=>String(b.fechaDocumento||b.creado).localeCompare(String(a.fechaDocumento||a.creado)))){
+      const e=equipoByKey(c.equipoKey);
+      tb.appendChild(el("tr",{class:"clickable",onclick:()=>openCorrExpediente(c.id)},
+        el("td",{class:"mono"}, c.folioSigem||"—", c.otCompleta?null:el("div",{},el("span",{class:"badge b-warn"},"OT por completar"))),
+        el("td",{}, e?esc(e.equipo):c.equipoKey, el("div",{class:"faint mono"}, e?e.inventario:"")),
+        el("td",{class:"mono"}, fmtDate(c.fechaDocumento)),
+        el("td",{}, badgeEstado(c.estadoEquipo||"")),
+        el("td",{class:"num"}, String((c.avances||[]).length)),
+        el("td",{}, c.estadoEvento==="Cerrado"?el("span",{class:"badge b-ok"},"Cerrado"):el("span",{class:"badge b-warn"},"Abierto")),
+        el("td",{}, el("button",{class:"btn sm ghost",onclick:(ev)=>{ev.stopPropagation(); openCorrSubevento(c.equipoKey,c.folioSigem);}},"+ avance"))
+      ));
+    }
+    t.appendChild(tb); tw.appendChild(t); wrap.appendChild(tw);
+  }
+  return wrap;
+}
+function corrRowForExport(c){ const e=equipoByKey(c.equipoKey)||{}; return {
+  Folio:c.folioSigem, Inventario:e.inventario||"", Equipo:e.equipo||"", Apertura:c.fechaDocumento,
+  Tecnico:c.tecnico||"", EstadoEquipo:c.estadoEquipo||"", Estado:c.estadoEvento||"", Cierre:c.fechaCierre||"", OTcompleta:c.otCompleta?"Sí":"No" }; }
+
+const SUBEVENTOS = ["Orden de Trabajo (OT)","Envío a servicio técnico","Retorno de servicio técnico","Visita técnica externa",
+  "Cotización","Informe técnico emitido","OC emitida","Reparación en terreno","Reporte de Servicio recibido","Baja","Cierre del expediente"];
+
+function openCorrSubevento(presetKey, presetFolio){
+  const f={ folio:presetFolio||"", equipoKey:presetKey||"", subtipo:SUBEVENTOS[0], fecha:todayISO(), detalle:"", responsable:prefs.ultimoEjecutor||"", empresa:"", numero:"", estadoEquipo:"No Operativo" };
+  const body=el("div");
+  body.appendChild(el("div",{class:"banner info",style:"margin-top:0"},"El Folio SIGEM identifica el expediente. Si ya existe, el sub-evento se adjunta; si no, se crea (OT por completar)."));
+  body.appendChild(textField("Folio SIGEM *","folio",f));
+  // equipo
+  const eqField=el("div",{class:"field"});
+  eqField.appendChild(el("label",{},"Equipo (N° Inventario o Serie)"));
+  const eqInput=el("input",{list:"eqlist2",placeholder:"Escribe inventario o serie…",value:f.equipoKey?equipoLabel(f.equipoKey):""});
+  const dl=el("datalist",{id:"eqlist2"}); state.equipos.slice(0,3000).forEach(e=>dl.appendChild(el("option",{value:`${e.inventario} · ${e.equipo} · ${e.serie}`})));
+  eqField.appendChild(eqInput); eqField.appendChild(dl);
+  eqInput.addEventListener("change",()=>{ const e=matchEquipo(eqInput.value); if(e)f.equipoKey=e.key; });
+  body.appendChild(eqField);
+  body.appendChild(frow([
+    selField("Tipo de sub-evento *","subtipo",f,SUBEVENTOS.map(x=>({v:x,t:x})), ()=>refresh()),
+    dateField("Fecha","fecha",f),
+  ]));
+  const dyn=el("div"); body.appendChild(dyn);
+  body.appendChild(txtField("Detalle","detalle",f));
+  function refresh(){
+    dyn.innerHTML="";
+    const st=f.subtipo;
+    if(st.includes("Envío")||st.includes("Visita")||st.includes("OC")||st.includes("Cotización")||st.includes("Reporte")||st.includes("Informe")){
+      dyn.appendChild(frow([ textField("N°","numero",f), comboField("Empresa","empresa",f,state.empresas) ]));
+    }
+    if(st.includes("Reparación")||st.includes("Retorno")||st.includes("Cierre")){
+      dyn.appendChild(selField("Estado del equipo","estadoEquipo",f,ESTADOS_EQUIPO.map(x=>({v:x,t:x}))));
+    }
+    if(st.includes("Orden de Trabajo")){
+      dyn.appendChild(frow([ selField("Técnico","responsable",f,EJECUTORES.map(x=>({v:x,t:x}))), selField("Estado inicial","estadoEquipo",f,ESTADOS_EQUIPO.map(x=>({v:x,t:x}))) ]));
+    }
+  }
+  refresh();
+  openDrawer("Registrar sub-evento correctivo", body, [
+    {label:"Cancelar",act:closeDrawer},
+    {label:"Guardar",cls:"primary",act:async()=>{
+      if(!f.folio.trim()){ toast("El Folio SIGEM es obligatorio."); return; }
+      let c=state.correctivos.find(x=>x.folioSigem===f.folio.trim());
+      const isOT=f.subtipo.includes("Orden de Trabajo");
+      if(!c){
+        c={ id:uid(), creado:todayISO(), equipoKey:f.equipoKey, folioSigem:f.folio.trim(),
+          otCompleta:false, tipoEvento:"Orden de Trabajo", requerimiento:"", fechaDocumento: isOT?f.fecha:"",
+          tecnico:"", estadoEquipo:f.estadoEquipo||"No Operativo", estadoEvento:"Abierto", tipoRegistro:"Borrador", avances:[] };
+        state.correctivos.push(c);
+      }
+      if(f.equipoKey && !c.equipoKey) c.equipoKey=f.equipoKey;
+      if(f.empresa && !state.empresas.includes(f.empresa)) state.empresas.push(f.empresa);
+      if(isOT){
+        c.otCompleta=true; c.fechaDocumento=f.fecha; c.tecnico=f.responsable||c.tecnico;
+        c.requerimiento=f.detalle||c.requerimiento; if(f.estadoEquipo)c.estadoEquipo=f.estadoEquipo;
+      } else {
+        c.avances.push({ id:uid(), tipo:f.subtipo, fecha:f.fecha, detalle:f.detalle, numero:f.numero, empresa:f.empresa, responsable:f.responsable, estadoEquipoVisita:f.estadoEquipo, registrado:new Date().toISOString() });
+        if(f.estadoEquipo) c.estadoEquipo=f.estadoEquipo;
+        if(f.subtipo.includes("Cierre")){ c.estadoEvento="Cerrado"; c.fechaCierre=f.fecha; }
+      }
+      await markDirty("usuario"); closeDrawer(); render(); toast(isOT?"OT registrada.":"Sub-evento adjunto al folio.");
+    }}
+  ]);
+}
+function openCorrExpediente(id){
+  const c=state.correctivos.find(x=>x.id===id); if(!c) return;
+  const e=equipoByKey(c.equipoKey);
+  const body=el("div");
+  if(!c.otCompleta) body.appendChild(el("div",{class:"banner warn",style:"margin-top:0"},"OT por completar — registra la Orden de Trabajo para completar la apertura."));
+  const kv=el("dl",{class:"kv"});
+  const add=(k,v)=>{ kv.appendChild(el("dt",{},k)); kv.appendChild(el("dd",{}, v||"—")); };
+  add("Folio SIGEM", el("span",{class:"mono"},c.folioSigem));
+  add("Equipo", e?`${e.equipo} · ${e.inventario}`:c.equipoKey);
+  add("Apertura OT", fmtDate(c.fechaDocumento)); add("Técnico", c.tecnico);
+  add("Estado equipo", badgeEstado(c.estadoEquipo||"")); add("Requerimiento", c.requerimiento);
+  add("Estado expediente", c.estadoEvento==="Cerrado"?el("span",{class:"badge b-ok"},"Cerrado"):el("span",{class:"badge b-warn"},"Abierto"));
+  if(c.fechaCierre) add("Cierre", fmtDate(c.fechaCierre));
+  body.appendChild(kv);
+  body.appendChild(el("div",{class:"tag-row",style:"margin:12px 0"},
+    el("button",{class:"btn sm primary",onclick:()=>{ closeDrawer(); openCorrSubevento(c.equipoKey,c.folioSigem); }},"+ Sub-evento"),
+    c.estadoEvento!=="Cerrado"?el("button",{class:"btn sm",onclick:async()=>{ const fc=prompt("Fecha de cierre (AAAA-MM-DD):",todayISO()); if(fc){ c.estadoEvento="Cerrado"; c.fechaCierre=fc; await markDirty("usuario"); openCorrExpediente(id); render(); } }},"Cerrar OT"):null,
+  ));
+  body.appendChild(el("hr",{class:"soft"}));
+  body.appendChild(el("div",{class:"viewhead",style:"margin-bottom:8px"},el("h2",{style:"font-size:15px"},"Avances ("+(c.avances||[]).length+")")));
+  if(!(c.avances||[]).length) body.appendChild(el("div",{class:"small muted"},"Sin avances aún."));
+  else {
+    const tw=el("div",{class:"tablewrap dense"}); const t=el("table",{class:"grid"});
+    t.appendChild(el("thead",{},el("tr",{},el("th",{},"Fecha"),el("th",{},"Tipo"),el("th",{},"Detalle"))));
+    const tb=el("tbody",{});
+    for(const a of (c.avances||[]).slice().sort((x,y)=>String(y.fecha).localeCompare(String(x.fecha)))){
+      tb.appendChild(el("tr",{}, el("td",{class:"mono"},fmtDate(a.fecha)), el("td",{},esc(a.tipo)), el("td",{class:"small"},esc([a.numero,a.empresa,a.detalle].filter(Boolean).join(" · ")))));
+    }
+    t.appendChild(tb); tw.appendChild(t); body.appendChild(tw);
+  }
+  openDrawer("Expediente "+c.folioSigem, body, [], {wide:true});
+}
+
+/* --------------------------- Vista: Pendientes --------------------------- */
+function viewPendientes(){
+  const wrap=el("div");
+  wrap.appendChild(el("div",{class:"viewhead"},
+    el("h2",{},"Pendientes"),
+    el("span",{class:"sub"},"5 tipos · 3 orígenes"),
+    el("span",{class:"spacer"}),
+    el("button",{class:"btn sm",onclick:()=>exportTableXLSX(state.pendientes.map(pendRowForExport),"Pendientes")},"Exportar a Excel"),
+    el("button",{class:"btn sm primary",onclick:()=>openPendForm(null,{})},"+ Pendiente"),
+  ));
+  // filtros
+  const fb=el("div",{class:"filterbar"});
+  if(ui.pendEquipo){ const e=equipoByKey(ui.pendEquipo);
+    fb.appendChild(el("span",{class:"chip-x"}, `Equipo: ${e?e.inventario:ui.pendEquipo}`, el("button",{onclick:()=>{ ui.pendEquipo=""; render(); }},"✕"))); }
+  const estSel=el("select",{onchange:e=>{ ui.pendEstado=e.target.value; render(); }});
+  [["","Estado: todos"],["Abierto","Abiertos"],["Completado","Completados"]].forEach(([v,t])=>{ const o=el("option",{value:v},t); if((ui.pendEstado||"")===v)o.selected=true; estSel.appendChild(o); });
+  fb.appendChild(estSel);
+  const tipoSel=el("select",{onchange:e=>{ ui.pendTipo=e.target.value; render(); }});
+  tipoSel.appendChild(el("option",{value:""},"Tipo: todos"));
+  Object.entries(PEND_TIPOS).forEach(([k,v])=>{ const o=el("option",{value:k},v.label); if((ui.pendTipo||"")===k)o.selected=true; tipoSel.appendChild(o); });
+  fb.appendChild(tipoSel);
+  const fuentes=[...new Set(state.pendientes.map(p=>p.fuente||"app"))];
+  if(fuentes.length>1){
+    const fSel=el("select",{onchange:e=>{ ui.pendFuente=e.target.value; render(); }});
+    fSel.appendChild(el("option",{value:""},"Fuente: todas"));
+    [["app","App / respaldo"],["integrado","Planilla integrada"]].forEach(([v,t])=>{ if(!fuentes.includes(v))return; const o=el("option",{value:v},t); if((ui.pendFuente||"")===v)o.selected=true; fSel.appendChild(o); });
+    fb.appendChild(fSel);
+  }
+  wrap.appendChild(fb);
+
+  let list=state.pendientes.slice();
+  if(ui.pendEstado) list=list.filter(p=> ui.pendEstado==="Abierto"? p.estado!=="Completado": p.estado==="Completado");
+  if(ui.pendTipo) list=list.filter(p=>p.tipo===ui.pendTipo);
+  if(ui.pendFuente) list=list.filter(p=>(p.fuente||"app")===ui.pendFuente);
+  if(ui.pendEquipo) list=list.filter(p=>p.equipoKey===ui.pendEquipo);
+  if(ui.search.trim()){ const q=ui.search.toLowerCase(); list=list.filter(p=>{ const e=equipoByKey(p.equipoKey); return [p.descripcion,e?.equipo,e?.inventario,e?.serie].some(v=>(v||"").toLowerCase().includes(q)); }); }
+  list.sort((a,b)=> (a.estado==="Completado"?1:0)-(b.estado==="Completado"?1:0) || String(a.fechaCompromiso).localeCompare(String(b.fechaCompromiso)));
+
+  if(!list.length){ wrap.appendChild(el("div",{class:"empty"},el("div",{class:"big"},"◷"),"Sin pendientes.")); return wrap; }
+  const tw=el("div",{class:"tablewrap dense"}); const t=el("table",{class:"grid"});
+  t.appendChild(el("thead",{},el("tr",{},...["Tipo","Fuente","Equipo","Compromiso","En espera de","Resp.","Estado",""].map(h=>el("th",{},h)))));
+  const tb=el("tbody",{});
+  for(const p of list){
+    const e=equipoByKey(p.equipoKey); const atraso=diasAtraso(p);
+    tb.appendChild(el("tr",{class:"clickable",onclick:()=>openPendForm(p)},
+      el("td",{}, el("span",{class:"badge "+origenCls(PEND_TIPOS[p.tipo]?.origen), title:p.tipoOriginal?("Original: "+p.tipoOriginal):""}, PEND_TIPOS[p.tipo]?.label||p.tipo), p.tipoOriginal?el("div",{class:"faint small"},esc(p.tipoOriginal)):null),
+      el("td",{}, (p.fuente||"app")==="integrado"?el("span",{class:"badge b-info"},"integrado"):el("span",{class:"badge b-neutral"},"app")),
+      el("td",{}, e?esc(e.equipo):p.equipoKey, el("div",{class:"faint mono"}, e?e.inventario:"")),
+      el("td",{}, fmtDate(p.fechaCompromiso), atraso?el("span",{class:"badge b-bad",style:"margin-left:6px"},atraso+"d"):null),
+      el("td",{class:"small"}, esc(p.enEsperaDe||"")),
+      el("td",{class:"small"}, esc(p.respEjecutivo||"")),
+      el("td",{}, p.estado==="Completado"?el("span",{class:"badge b-ok"},"Completado"):el("span",{class:"badge b-warn"},"Abierto")),
+      el("td",{}, el("div",{class:"tag-row"},
+        p.estado!=="Completado"?el("button",{class:"btn sm",title:"Marcar completado sin abrir",onclick:async(ev)=>{ ev.stopPropagation(); p.estado="Completado"; p.fechaCompletado=todayISO(); await markDirty("usuario"); recordEvent("click","Completar pendiente inline (lista)"); render(); }},"✓"):null,
+        el("button",{class:"btn sm ghost",onclick:(ev)=>{ev.stopPropagation();openPendForm(p);}},"Abrir")
+      ))
+    ));
+  }
+  t.appendChild(tb); tw.appendChild(t); wrap.appendChild(tw);
+  return wrap;
+}
+function pendRowForExport(p){ const e=equipoByKey(p.equipoKey)||{}; return {
+  Tipo:PEND_TIPOS[p.tipo]?.label||p.tipo, TipoOriginal:p.tipoOriginal||"", Fuente:p.fuente||"app", Origen:PEND_TIPOS[p.tipo]?.origen||"", Inventario:e.inventario||"", Equipo:e.equipo||"", Servicio:e.servicio||"",
+  Compromiso:p.fechaCompromiso, EnEsperaDe:p.enEsperaDe||"", RespEjecutivo:p.respEjecutivo||"", RespAdministrativo:p.respAdministrativo||"",
+  Estado:p.estado, Descripcion:p.descripcion||"" }; }
+function origenCls(o){ return o==="correctivo"?"b-info":(o==="preventiva"?"b-ok":"b-neutral"); }
+
+function openPendForm(pend, preset){
+  const isNew=!pend;
+  pend = pend || Object.assign({ id:uid(), creado:todayISO(), origenMP:null, equipoKey:"", origen:"administrativo", tipo:"otro",
+    causal:"", fechaReporte:"", fechaCompromiso:todayISO(), prioridad:"Media", situacion:"", respEjecutivo:"", respAdministrativo:RESP_ADMIN_DEFAULT,
+    enEsperaDe:"", descripcion:"", tareas:[], seguimiento:[], folioSIGEM:"", empresa:"", origenDoc:"", estado:"Abierto", fechaCompletado:"" }, preset||{});
+  const f=Object.assign({},pend); f.tareas=normalizeTareas(f.tareas); f.seguimiento=(f.seguimiento||[]).slice();
+  const body=el("div");
+  // tipo
+  body.appendChild(selField("Tipo de pendiente","tipo",f,Object.entries(PEND_TIPOS).map(([k,v])=>({v:k,t:`${v.label} (${v.origen})`})),()=>{ f.origen=PEND_TIPOS[f.tipo].origen; refresh(); }));
+  // equipo
+  const eqField=el("div",{class:"field"});
+  eqField.appendChild(el("label",{},"Equipo (N° Inventario autocompleta serie y servicio)"));
+  const eqInput=el("input",{list:"eqlist3",placeholder:"Escribe inventario o serie…",value:f.equipoKey?equipoLabel(f.equipoKey):""});
+  const dl=el("datalist",{id:"eqlist3"}); state.equipos.slice(0,3000).forEach(e=>dl.appendChild(el("option",{value:`${e.inventario} · ${e.equipo} · ${e.serie}`})));
+  eqField.appendChild(eqInput); eqField.appendChild(dl);
+  const eqInfo=el("div",{class:"hint"}, f.equipoKey?equipoLabel(f.equipoKey):"");
+  eqField.appendChild(eqInfo);
+  eqInput.addEventListener("change",()=>{ const e=matchEquipo(eqInput.value); if(e){ f.equipoKey=e.key; eqInfo.textContent=`${e.equipo} · ${e.serie} · ${e.servicio}`; } });
+  body.appendChild(eqField);
+
+  body.appendChild(frow([ dateField("Fecha compromiso","fechaCompromiso",f), selField("Prioridad","prioridad",f,["Alta","Media","Baja"].map(x=>({v:x,t:x}))) ]));
+  body.appendChild(frow([ selField("Resp. ejecutivo","respEjecutivo",f,[{v:"",t:"—"}].concat(EJECUTORES.map(x=>({v:x,t:x})))), selField("Resp. administrativo","respAdministrativo",f,EJECUTORES.map(x=>({v:x,t:x}))) ]));
+  body.appendChild(textField("En espera de (proveedor, repuesto, firma…)","enEsperaDe",f));
+  const dyn=el("div"); body.appendChild(dyn);
+  body.appendChild(txtField("Descripción","descripcion",f));
+
+  // tareas
+  const tareasBox=el("div",{class:"formsection"});
+  tareasBox.appendChild(el("h4",{},"Tareas"));
+  const taskList=el("ul",{class:"tasklist"});
+  function paintTasks(){
+    taskList.innerHTML="";
+    f.tareas.forEach((t,i)=>{
+      const cb=el("input",{type:"checkbox"}); cb.checked=!!t.hecha;
+      cb.addEventListener("change",()=>{ t.hecha=cb.checked; });
+      taskList.appendChild(el("li",{}, cb, el("span",{style:t.hecha?"text-decoration:line-through;color:var(--faint)":""},esc(t.texto)),
+        el("button",{class:"btn sm ghost",onclick:()=>{ f.tareas.splice(i,1); paintTasks(); }},"✕")));
+    });
+  }
+  paintTasks();
+  tareasBox.appendChild(taskList);
+  const newTask=el("input",{placeholder:"Nueva tarea…"});
+  tareasBox.appendChild(el("div",{class:"bita-add"}, newTask, el("button",{class:"btn sm",onclick:()=>{ if(newTask.value.trim()){ f.tareas.push({texto:newTask.value.trim(),hecha:false}); newTask.value=""; paintTasks(); } }},"Agregar")));
+  body.appendChild(tareasBox);
+
+  // seguimiento (bitácora)
+  const segBox=el("div",{class:"formsection"});
+  segBox.appendChild(el("h4",{},"Seguimiento (bitácora)"));
+  const bita=el("div",{class:"bitacora"});
+  function paintSeg(){
+    bita.innerHTML="";
+    if(!f.seguimiento.length) bita.appendChild(el("div",{class:"small muted"},"Sin entradas."));
+    f.seguimiento.slice().sort((a,b)=>String(b.fecha).localeCompare(String(a.fecha))).forEach(s=>{
+      bita.appendChild(el("div",{class:"entry"}, el("div",{class:"when"}, fmtDate(s.fecha)+(s.autor?" · "+s.autor:"")), el("div",{}, esc(s.texto))));
+    });
+  }
+  paintSeg();
+  segBox.appendChild(bita);
+  const segInput=el("input",{placeholder:'Ej. "solicité cotización a don Ricardo"'});
+  segBox.appendChild(el("div",{class:"bita-add"}, segInput, el("button",{class:"btn sm primary",onclick:()=>{ if(segInput.value.trim()){ f.seguimiento.push({fecha:todayISO(),texto:segInput.value.trim(),autor:""}); segInput.value=""; paintSeg(); } }},"Agregar")));
+  body.appendChild(segBox);
+
+  function refresh(){
+    dyn.innerHTML="";
+    if(f.tipo==="documental"){
+      dyn.appendChild(frow([ textField("Folio SIGEM","folioSIGEM",f), comboField("Empresa / proveedor","empresa",f,state.empresas) ]));
+      dyn.appendChild(selField("Origen","origenDoc",f,[{v:"visita",t:"Visita"},{v:"servicio_tecnico",t:"Servicio técnico"}]));
+    } else if(f.tipo==="protocolo_externo"){
+      dyn.appendChild(comboField("Empresa","empresa",f,state.empresas));
+    } else if(f.tipo==="reprogramacion"){
+      dyn.appendChild(frow([ selField("Causal","causal",f,[{v:"",t:"—"}].concat(Object.keys(CAUSALES).map(c=>({v:c,t:c+" — "+CAUSALES[c]})))), dateField("Fecha del reporte","fechaReporte",f) ]));
+    }
+  }
+  refresh();
+
+  const buttons=[
+    {label:"Cancelar",act:closeDrawer},
+  ];
+  if(!isNew && f.estado!=="Completado") buttons.push({label:"Marcar completado",act:async()=>{ const i=state.pendientes.findIndex(p=>p.id===f.id); f.estado="Completado"; f.fechaCompletado=todayISO(); if(i>=0)state.pendientes[i]=f; await markDirty("usuario"); closeDrawer(); render(); toast("Pendiente completado."); }});
+  buttons.push({label:"Guardar",cls:"primary",act:async()=>{
+    if(f.empresa && !state.empresas.includes(f.empresa)) state.empresas.push(f.empresa);
+    if(isNew) state.pendientes.push(f);
+    else { const i=state.pendientes.findIndex(p=>p.id===f.id); if(i>=0)state.pendientes[i]=f; }
+    await markDirty("usuario"); closeDrawer(); render(); toast("Pendiente guardado.");
+  }});
+  openDrawer(isNew?"Nuevo pendiente":"Pendiente · "+(PEND_TIPOS[f.tipo]?.label||""), body, buttons, {wide:true});
+}
+
+/* ------------------------ Vista: Reprogramación -------------------------- */
+function viewReprogramacion(){
+  const wrap=el("div");
+  wrap.appendChild(el("div",{class:"viewhead"}, el("h2",{},"Reprogramación"), el("span",{class:"sub"},"Ciclo C1/C5/C6/C7/C8 — generar → imprimir → 2 firmas → oficializar")));
+  const reprogs=state.pendientes.filter(p=>p.tipo==="reprogramacion");
+  if(!reprogs.length){ wrap.appendChild(el("div",{class:"empty"},el("div",{class:"big"},"↻"),"Sin reprogramaciones activas.")); return wrap; }
+  const tw=el("div",{class:"tablewrap dense"}); const t=el("table",{class:"grid"});
+  t.appendChild(el("thead",{},el("tr",{},...["Equipo","Causal","Compromiso","Etapa",""].map(h=>el("th",{},h)))));
+  const tb=el("tbody",{});
+  for(const p of reprogs.sort((a,b)=>String(a.fechaCompromiso).localeCompare(String(b.fechaCompromiso)))){
+    const e=equipoByKey(p.equipoKey); const et=etapaReprog(p);
+    tb.appendChild(el("tr",{class:"clickable",onclick:()=>openPendForm(p)},
+      el("td",{}, e?esc(e.equipo):p.equipoKey, el("div",{class:"faint mono"},e?e.inventario:"")),
+      el("td",{}, p.causal?el("span",{class:"badge b-warn"},p.causal):"—"),
+      el("td",{}, fmtDate(p.fechaCompromiso)),
+      el("td",{}, el("span",{class:"badge "+et.cls},et.label)),
+      el("td",{}, el("button",{class:"btn sm ghost",onclick:(ev)=>{ev.stopPropagation();openPendForm(p);}},"Gestionar"))
+    ));
+  }
+  t.appendChild(tb); tw.appendChild(t); wrap.appendChild(tw);
+  wrap.appendChild(el("div",{class:"banner info",style:"margin-top:12px"},"Tras las 2 firmas, el código aparece en el panel «Por volcar al .xlsm» del Tablero. Escríbelo en la planilla y recárgala para oficializar."));
+  return wrap;
+}
+
+/* ----------------------- Vista: Resumen mes×código ----------------------- */
+function viewResumen(){
+  const wrap=el("div");
+  if(!state.equipos.length){ wrap.appendChild(emptyNoData()); return wrap; }
+  wrap.appendChild(el("div",{class:"viewhead"}, el("h2",{},"Resumen mes × código"), el("span",{class:"sub"},"Clic en una celda → Equipos filtrados"),
+    el("span",{class:"spacer"}), el("button",{class:"btn sm",onclick:exportResumen},"Exportar a Excel")));
+  const cum=cumplimiento();
+  const { cols, matrix }=resumenMesCodigo();
+  const labels={ "X":"Prog. X","R":"Reprog. R","RA":"RA","PM":"PM","sin":"Sin registro","Si":"Sí","Si-RA":"Sí-RA","C1-8":"Causales","FS":"FS","No":"No","NU":"NU","Baja":"Baja" };
+  const tw=el("div",{class:"tablewrap"}); const t=el("table",{class:"grid"});
+  const trh=el("tr",{},el("th",{},"Mes"));
+  cols.forEach(c=>trh.appendChild(el("th",{class:"center"},labels[c]||c)));
+  trh.appendChild(el("th",{class:"center"},"% Cumpl."));
+  t.appendChild(el("thead",{},trh));
+  const tb=el("tbody",{});
+  matrix.forEach((row,m)=>{
+    const tr=el("tr",{}, el("td",{}, el("b",{},MESES_LARGO[m])));
+    cols.forEach(c=>{
+      const n=row.counts[c];
+      const td=el("td",{class:"heatcell", onclick:()=> n? goEquipos({mes:String(m), codigo:c}) : null }, n?String(n):"");
+      if(n){ td.style.background = heatColor(c); }
+      tr.appendChild(td);
+    });
+    const pct=cum.porMes[m].pct;
+    tr.appendChild(el("td",{class:"center"}, pct==null?(cum.porMes[m].futuro?"—":"—"):el("b",{},pct+"%")));
+    tb.appendChild(tr);
+  });
+  t.appendChild(tb); tw.appendChild(t); wrap.appendChild(tw);
+  wrap.appendChild(el("div",{class:"legend"},
+    el("span",{}, el("span",{class:"dot",style:"background:var(--info)"}),"Programación"),
+    el("span",{}, el("span",{class:"dot",style:"background:var(--ok)"}),"Realizada"),
+    el("span",{}, el("span",{class:"dot",style:"background:var(--warn)"}),"Causal / sin registro"),
+    el("span",{}, el("span",{class:"dot",style:"background:var(--bad)"}),"Baja / NU / FS"),
+  ));
+  return wrap;
+}
+function heatColor(c){
+  if(["X","R","RA","PM"].includes(c)) return "var(--info-tint)";
+  if(["Si","Si-RA"].includes(c)) return "var(--ok-tint)";
+  if(["C1-8","sin","No"].includes(c)) return "var(--warn-tint)";
+  if(["Baja","NU","FS"].includes(c)) return "var(--bad-tint)";
+  return "";
+}
+function exportResumen(){
+  const { cols, matrix }=resumenMesCodigo();
+  const rows=matrix.map((r,m)=>{ const o={Mes:MESES_LARGO[m]}; cols.forEach(c=>o[c]=r.counts[c]); return o; });
+  exportTableXLSX(rows,"ResumenMesCodigo");
+}
+
+/* =========================================================================
+   Componentes de formulario reutilizables
+   ========================================================================= */
+function frow(children){ const d=el("div",{class: children.length===3?"frow3":"frow"}); children.forEach(c=>d.appendChild(c)); return d; }
+function textField(label,key,f){ const d=el("div",{class:"field"}); d.appendChild(el("label",{},label));
+  const i=el("input",{value:f[key]||""}); i.addEventListener("input",()=>f[key]=i.value); d.appendChild(i); return d; }
+function dateField(label,key,f){ const d=el("div",{class:"field"}); d.appendChild(el("label",{},label));
+  const i=el("input",{type:"date",value:(f[key]||"").slice(0,10)}); i.addEventListener("input",()=>f[key]=i.value); d.appendChild(i); return d; }
+function txtField(label,key,f){ const d=el("div",{class:"field"}); d.appendChild(el("label",{},label));
+  const i=el("textarea",{},); i.value=f[key]||""; i.addEventListener("input",()=>f[key]=i.value); d.appendChild(i); return d; }
+function selField(label,key,f,opts,onchange){ const d=el("div",{class:"field"}); d.appendChild(el("label",{},label));
+  const s=el("select",{}); opts.forEach(o=>{ const op=el("option",{value:o.v},o.t); if(String(f[key])===String(o.v))op.selected=true; s.appendChild(op); });
+  s.addEventListener("change",()=>{ f[key]=s.value; if(onchange)onchange(); }); d.appendChild(s); return d; }
+function comboField(label,key,f,list){ const d=el("div",{class:"field"}); d.appendChild(el("label",{},label));
+  const id="dl"+Math.random().toString(36).slice(2,7);
+  const i=el("input",{list:id,value:f[key]||""}); const dl=el("datalist",{id}); (list||[]).forEach(v=>dl.appendChild(el("option",{value:v})));
+  i.addEventListener("input",()=>f[key]=i.value); d.appendChild(i); d.appendChild(dl); return d; }
+
+function equipoLabel(key){ const e=equipoByKey(key); return e? `${e.inventario} · ${e.equipo} · ${e.serie}` : key; }
+function matchEquipo(str){
+  if(!str) return null;
+  const inv=str.split("·")[0].trim();
+  let e=state.equipos.find(x=>x.inventario===inv);
+  if(e) return e;
+  const up=str.trim().toUpperCase();
+  return state.equipos.find(x=> x.inventario && up.includes(x.inventario.toUpperCase()) || (x.serie && up.includes(x.serie.toUpperCase()))) || null;
+}
+
+/* ---------------------------- Badges helpers ----------------------------- */
+function badgeEstado(est){
+  const map={ "Operativo":"b-ok","No Operativo":"b-bad","Servicio Técnico":"b-warn","Préstamo":"b-info","No Ubicable":"b-warn","Baja":"b-neutral" };
+  return el("span",{class:"badge "+(map[est]||"b-neutral")}, est||"—");
+}
+function badgeResultado(res){
+  if(!res) return el("span",{class:"faint"},"—");
+  let cls="b-neutral";
+  if(res==="Si"||res==="Si-RA") cls="b-ok";
+  else if(/^C[1-8]$/.test(res)) cls="b-warn";
+  else if(res==="FS"||res==="No") cls="b-bad";
+  else if(res==="NU") cls="b-warn";
+  else if(res==="Baja") cls="b-neutral";
+  else if(["X","R","RA","PM"].includes(res)) cls="b-info";
+  return el("span",{class:"badge "+cls}, res);
+}
+function emptyNoData(){ return el("div",{class:"empty"}, el("div",{class:"big"},"▦"), el("div",{},"Carga la planilla .xlsm para ver esta vista."),
+  el("div",{style:"margin-top:12px"}, el("button",{class:"btn primary",onclick:()=>$("#fileXlsm").click()},"Cargar .xlsm"))); }
+
+/* =========================================================================
+   Drawer
+   ========================================================================= */
+function openDrawer(title, bodyNode, buttons=[], opts={}){
+  recordEvent("panel", title);
+  $("#drawerTitle").textContent=title;
+  const b=$("#drawerBody"); b.innerHTML=""; b.appendChild(bodyNode);
+  if(buttons.length){
+    const bar=el("div",{style:"position:sticky;bottom:0;background:var(--bg);padding-top:14px;margin-top:14px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end"});
+    buttons.forEach(btn=> bar.appendChild(el("button",{class:"btn "+(btn.cls||""),onclick:btn.act}, btn.label)));
+    b.appendChild(bar);
+  }
+  $("#drawer").classList.add("open"); $("#drawerBack").classList.add("open");
+}
+function closeDrawer(){
+  $("#drawer").classList.remove("open"); $("#drawerBack").classList.remove("open");
+  // Volver al contexto: si se abrió un editor desde una ficha, reabrir la ficha al cerrar
+  // (salvo que otro panel se haya abierto encima, p. ej. un sub-evento encadenado).
+  if(fichaReturnKey){ const k=fichaReturnKey; fichaReturnKey=null; setTimeout(()=>{ if(!$("#drawer").classList.contains("open")) openFicha(k); }, 60); }
+}
+
+function openVolcarPanel(pv){
+  const body=el("div");
+  body.appendChild(el("div",{class:"small muted",style:"margin-bottom:10px"},"Transcribe estos códigos en la hoja Registro_MP-2026 (subcolumna R de cada mes), luego recarga el .xlsm para oficializar."));
+  const lines=pv.map(x=> `${x.columna}${x.fila}\t${x.codigo}\t${x.equipo.inventario}\t${x.equipo.equipo}\t${MESES[x.mes]}`).join("\n");
+  const box=el("textarea",{class:"copybox"}); box.value="Celda\tCódigo\tInventario\tEquipo\tMes\n"+lines;
+  body.appendChild(box);
+  openDrawer("Por volcar al .xlsm ("+pv.length+")", body, [
+    {label:"Copiar al portapapeles",cls:"primary",act:()=>{ box.select(); navigator.clipboard?.writeText(box.value); toast("Copiado."); }},
+    {label:"Exportar a Excel",act:()=>exportTableXLSX(pv.map(x=>({Celda:`${x.columna}${x.fila}`,Codigo:x.codigo,Inventario:x.equipo.inventario,Equipo:x.equipo.equipo,Servicio:x.equipo.servicio,Mes:MESES[x.mes]})),"PorVolcar")},
+  ]);
+}
+
+/* =========================================================================
+   Exportar / Importar JSON · Excel · Respaldo a carpeta
+   ========================================================================= */
+function exportJSON(){
+  const payload={ app:"Sistema de Gestión MP 2026 — Equipamiento Clínico HHHA", tipo:"respaldo-gmp2026-v3", version:3,
+    fecha:new Date().toISOString(), meta:state.meta,
+    detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos,
+    empresas:state.empresas, ingenieros:state.ingenieros, usageLog, usoResumen:resumenUso(), entorno:entornoSesion(), prefs };
+  download(`respaldo-MP2026-${todayISO()}.json`, JSON.stringify(payload,null,2));
+  dirtySinceBackup=false; changesSinceFolderSave=0; render(); toast("Respaldo JSON exportado.");
+}
+// "Respaldar ahora": genera el respaldo reimportable (JSON) y la estructura legible (Excel)
+function respaldarAhora(){ exportJSON(); exportAllXLSX(); }
+async function importJSON(file){
+  try{
+    const data=JSON.parse(await file.text());
+    if(data.tipo==="respaldo-gmp2026"){ // formato viejo → usar importador de migración
+      return importOldBackupData(data);
+    }
+    if(data.detalleMP) state.detalleMP=data.detalleMP;
+    if(data.pendientes) state.pendientes=data.pendientes;
+    if(data.correctivos) state.correctivos=data.correctivos;
+    if(data.empresas) state.empresas=data.empresas;
+    if(data.ingenieros) state.ingenieros=data.ingenieros;
+    if(Array.isArray(data.usageLog)) usageLog=data.usageLog;
+    if(data.prefs) prefs=Object.assign(prefs,data.prefs);
+    promoverBorradores();
+    const dropRep=dedupReprogramaciones();
+    await persistUsuario(); await persistPrefs(); dirtySinceBackup=false; render(); toast("Respaldo importado."+(dropRep?` ${dropRep} reprog. duplicada(s) descartada(s).`:""));
+  }catch(e){ toast("Error importando JSON: "+e.message); }
+}
+async function importOldBackupData(data){ const blob=new File([JSON.stringify(data)],"b.json"); return importOldBackup(blob); }
+
+function exportTableXLSX(rows, name){
+  if(!rows || !rows.length){ toast("Nada que exportar."); return; }
+  // normalizar: si rows son equipos crudos, mapear columnas visibles
+  let data=rows;
+  if(rows[0] && rows[0].key && rows[0].prog){
+    const cols=visibleEqColumns();
+    data=rows.map(e=>{ const o={}; cols.forEach(c=>{ o[c.h]= c.f==="_estado"?estadoEquipo(e.key):(c.f==="_pend"?pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length:(e[c.f]||"")); }); return o; });
+  }
+  const ws=XLSX.utils.json_to_sheet(data);
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31));
+  XLSX.writeFile(wb, `${name}-${todayISO()}.xlsx`);
+}
+
+// Respaldo completo en estructura Excel: un libro .xlsx con una hoja por colección
+function buildWorkbook(){
+  const wb=XLSX.utils.book_new();
+  const addSheet=(rows,name)=>{ const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{ "(sin datos)":"" }]); XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31)); };
+
+  // Equipos (con estado y nº de pendientes derivados)
+  addSheet(state.equipos.map(e=>({
+    ID:e.idPlanilla, "N° Carpeta":e.carpeta, "N° Inventario":e.inventario, Equipo:e.equipo, Servicio:e.servicio,
+    Unidad:e.unidad, Ubicación:e.ubicacion, Procedencia:e.procedencia, Marca:e.marca, Modelo:e.modelo, "N° Serie":e.serie,
+    "Año Instalación":e.anio, "Vida Útil Residual":e.vidaUtil, Clasificación:e.clasif, Familia:e.fam, Frecuencia:e.frecuencia,
+    Estado:estadoEquipo(e.key), "Pendientes abiertos": pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length, Fila:e.fila
+  })), "Equipos");
+
+  // Mantenciones (detalleMP)
+  addSheet(state.detalleMP.map(mpRowForExport), "Mantenciones");
+
+  // Pendientes (+ seguimiento resumido en una columna)
+  addSheet(state.pendientes.map(p=>{ const r=pendRowForExport(p);
+    r.EnEsperaDe=p.enEsperaDe||""; r.Prioridad=p.prioridad||""; r.Causal=p.causal||"";
+    r.Tareas=(p.tareas||[]).map(t=>(t.hecha?"✓ ":"☐ ")+(t.texto||"")).join(" | ");
+    r.Seguimiento=(p.seguimiento||[]).map(s=>`${(s.fecha||"").slice(0,10)}: ${s.texto}`).join(" || ");
+    r.Creado=p.creado; r.Completado=p.fechaCompletado||""; return r; }), "Pendientes");
+
+  // Correctivos (expedientes)
+  addSheet(state.correctivos.map(corrRowForExport), "Correctivos");
+
+  // Avances de correctivos (uno por fila, vinculado al folio)
+  const avances=[];
+  for(const c of state.correctivos){ const e=equipoByKey(c.equipoKey)||{};
+    for(const a of (c.avances||[])) avances.push({ Folio:c.folioSigem, Inventario:e.inventario||"", Equipo:e.equipo||"",
+      Fecha:(a.fecha||"").slice(0,10), Tipo:a.tipo, "N°":a.numero||"", Empresa:a.empresa||"", Responsable:a.responsable||"", Detalle:a.detalle||"" }); }
+  addSheet(avances, "Avances correctivos");
+
+  // Resumen mes × código
+  const { cols, matrix }=resumenMesCodigo();
+  addSheet(matrix.map((r,m)=>{ const o={Mes:MESES_LARGO[m]}; cols.forEach(c=>o[c]=r.counts[c]); return o; }), "Resumen mes×código");
+  return wb;
+}
+function exportAllXLSX(){
+  XLSX.writeFile(buildWorkbook(), `respaldo-MP2026-${todayISO()}.xlsx`);
+  toast("Respaldo Excel exportado.");
+}
+
+async function chooseBackupFolder(){
+  if(!window.showDirectoryPicker){ toast("Tu navegador no soporta auto-guardado a carpeta. Usa «Respaldar ahora»."); return; }
+  try{ backupDirHandle=await window.showDirectoryPicker(); const ok=await saveToFolder(); toast(ok?"Carpeta elegida. Auto-guardado de JSON + Excel activo (incl. al cerrar).":"Carpeta elegida, pero no se pudo escribir aún."); render(); }
+  catch(e){ /* cancelado */ }
+}
+async function saveToFolder(){
+  if(!backupDirHandle) return false;
+  try{
+    // JSON reimportable
+    const payload={ tipo:"respaldo-gmp2026-v3", version:3, fecha:new Date().toISOString(), meta:state.meta,
+      detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros, usageLog, usoResumen:resumenUso(), entorno:entornoSesion(), prefs };
+    const fhJ=await backupDirHandle.getFileHandle(`respaldo-MP2026.json`,{create:true});
+    const wJ=await fhJ.createWritable(); await wJ.write(JSON.stringify(payload,null,2)); await wJ.close();
+    // Excel legible (mismo libro de "Respaldar ahora")
+    const buf=XLSX.write(buildWorkbook(),{type:"array",bookType:"xlsx"});
+    const fhX=await backupDirHandle.getFileHandle(`respaldo-MP2026.xlsx`,{create:true});
+    const wX=await fhX.createWritable(); await wX.write(buf); await wX.close();
+    dirtySinceBackup=false; changesSinceFolderSave=0;
+    return true;
+  }catch(e){ console.warn("auto-guardado falló",e); return false; }
+}
+
+/* =========================================================================
+   Menú "Más", importadores, eventos globales
+   ========================================================================= */
+function diagnosticoDatos(){
+  const keys=new Set(state.equipos.map(e=>e.key));
+  const orphMP=state.detalleMP.filter(m=>!keys.has(m.equipoKey));
+  const orphPend=state.pendientes.filter(p=>!keys.has(p.equipoKey));
+  const orphCorr=state.correctivos.filter(c=>!keys.has(c.equipoKey));
+  const groups={}; state.pendientes.forEach(p=>{ const k=p.equipoKey+"|"+p.tipo; (groups[k]=groups[k]||[]).push(p); });
+  const dups=Object.entries(groups).filter(([k,a])=>a.length>1 && keys.has(a[0].equipoKey)).map(([k,a])=>a);
+  return { orphMP, orphPend, orphCorr, dups };
+}
+function openDiagnostico(){
+  const d=diagnosticoDatos();
+  const body=el("div");
+  const totalOrph=d.orphMP.length+d.orphPend.length+d.orphCorr.length;
+  body.appendChild(el("div",{class:"banner "+(totalOrph||d.dups.length?"warn":"info"),style:"margin-top:0"},
+    totalOrph||d.dups.length? `Se encontraron ${totalOrph} registro(s) sin equipo en la planilla y ${d.dups.length} grupo(s) de pendientes posiblemente duplicados.` : "Sin problemas: todos los registros enlazan a un equipo y no hay duplicados evidentes. ✅"));
+
+  // Huérfanos
+  const secOrph=el("div",{class:"card"});
+  secOrph.appendChild(el("h3",{},"Registros sin equipo en la planilla ",el("span",{class:"count"},`(${totalOrph})`)));
+  secOrph.appendChild(el("div",{class:"small muted",style:"margin-bottom:8px"},"Su N° Serie/Inventario no existe en el .xlsm cargado (datos de origen con serie inválida, o equipo fuera del programa 2026). Se conservan, pero no aparecen en fichas."));
+  if(!totalOrph) secOrph.appendChild(el("div",{class:"small muted"},"Ninguno. ✅"));
+  else {
+    const tw=el("div",{class:"tablewrap dense",style:"max-height:240px"}); const t=el("table",{class:"grid"});
+    t.appendChild(el("thead",{},el("tr",{},...["Clase","Equipo (key)","Detalle","Fuente"].map(h=>el("th",{},h)))));
+    const tb=el("tbody",{});
+    d.orphMP.forEach(m=>tb.appendChild(el("tr",{}, el("td",{},"MP"), el("td",{class:"mono"},m.equipoKey), el("td",{class:"small"},(m.resultado||"")+" "+fmtDate(m.fecha)), el("td",{class:"small"},m.fuente||"app"))));
+    d.orphPend.forEach(p=>tb.appendChild(el("tr",{}, el("td",{},"Pendiente"), el("td",{class:"mono"},p.equipoKey), el("td",{class:"small"},esc((p.tipoOriginal||p.tipo)+" — "+(p.descripcion||"").slice(0,40))), el("td",{class:"small"},p.fuente||"app"))));
+    d.orphCorr.forEach(c=>tb.appendChild(el("tr",{}, el("td",{},"Correctivo"), el("td",{class:"mono"},c.equipoKey), el("td",{class:"small"},"Folio "+(c.folioSigem||"")), el("td",{class:"small"},c.fuente||""))));
+    t.appendChild(tb); tw.appendChild(t); secOrph.appendChild(tw);
+  }
+  body.appendChild(secOrph);
+
+  // Duplicados de pendientes
+  const secDup=el("div",{class:"card"});
+  secDup.appendChild(el("h3",{},"Pendientes posiblemente duplicados ",el("span",{class:"count"},`(${d.dups.length} grupos)`)));
+  secDup.appendChild(el("div",{class:"small muted",style:"margin-bottom:8px"},"Mismo equipo y mismo tipo (suele pasar al importar el respaldo y la planilla integrada). Revisa y borra los repetidos."));
+  if(!d.dups.length) secDup.appendChild(el("div",{class:"small muted"},"Ninguno. ✅"));
+  else {
+    const tw=el("div",{class:"tablewrap dense",style:"max-height:300px"}); const t=el("table",{class:"grid"});
+    t.appendChild(el("thead",{},el("tr",{},...["Equipo","Tipo","Fuente","Estado",""].map(h=>el("th",{},h)))));
+    const tb=el("tbody",{});
+    d.dups.forEach(grp=> grp.forEach((p,i)=>{ const e=equipoByKey(p.equipoKey);
+      tb.appendChild(el("tr",{style:i===0?"border-top:2px solid var(--line)":""},
+        el("td",{}, i===0?(e?esc(e.inventario):p.equipoKey):""),
+        el("td",{}, el("span",{class:"badge "+origenCls(PEND_TIPOS[p.tipo]?.origen)},PEND_TIPOS[p.tipo]?.label||p.tipo)),
+        el("td",{class:"small"}, p.fuente||"app"),
+        el("td",{class:"small"}, p.estado),
+        el("td",{}, el("div",{class:"tag-row"},
+          el("button",{class:"btn sm ghost",onclick:()=>{ closeDrawer(); openPendForm(p); }},"Ver"),
+          el("button",{class:"btn sm",title:"Borrar este pendiente",onclick:async()=>{ if(confirm("¿Borrar este pendiente duplicado?")){ const idx=state.pendientes.findIndex(x=>x.id===p.id); if(idx>=0)state.pendientes.splice(idx,1); await markDirty("usuario"); openDiagnostico(); } }},"Borrar")
+        ))
+      )); }));
+    t.appendChild(tb); tw.appendChild(t); secDup.appendChild(tw);
+  }
+  body.appendChild(secDup);
+
+  openDrawer("Diagnóstico de datos", body, [
+    {label:"Descartar reprog. duplicadas", act:async()=>{ const n=dedupReprogramaciones(); await markDirty("usuario"); toast(n?`${n} reprogramación(es) duplicada(s) descartada(s).`:"No había reprogramaciones duplicadas."); openDiagnostico(); render(); }},
+    {label:"Exportar diagnóstico", act:()=>{ const rows=[
+      ...d.orphMP.map(m=>({Clase:"MP huérfana",Equipo:m.equipoKey,Detalle:m.resultado+" "+m.fecha,Fuente:m.fuente||"app"})),
+      ...d.orphPend.map(p=>({Clase:"Pendiente huérfano",Equipo:p.equipoKey,Detalle:(p.tipoOriginal||p.tipo),Fuente:p.fuente||"app"})),
+      ...d.orphCorr.map(c=>({Clase:"Correctivo huérfano",Equipo:c.equipoKey,Detalle:"Folio "+c.folioSigem,Fuente:c.fuente||""})),
+    ]; exportTableXLSX(rows.length?rows:[{info:"sin huérfanos"}],"Diagnostico"); }},
+    {label:"Cerrar", cls:"primary", act:closeDrawer}
+  ], {wide:true});
+}
+function openMenu(){
+  const body=el("div");
+  const item=(label,desc,act,cls)=> el("button",{class:"btn "+(cls||""),style:"display:block;width:100%;text-align:left;margin-bottom:8px",onclick:act}, el("b",{},label), desc?el("div",{class:"small faint"},desc):null);
+  body.appendChild(item("Cargar .xlsm","Lee ProgramaciónMP2026.xlsm (solo lectura).",()=>{closeDrawer();$("#fileXlsm").click();},"primary"));
+  body.appendChild(item("Importar respaldo anterior","Migra datos de la app antigua (respaldo-gmp2026).",()=>{closeDrawer();openImportOld();}));
+  body.appendChild(item("Importar planilla integrada (.xlsx)","Lee Sistema_Gestion_MP2026_Integrado: correctivos (fusión por folio) + pendientes (marcados como integrado).",()=>{closeDrawer();$("#fileIntegrado").click();}));
+  body.appendChild(item("Importar consolidado (.xlsx)","Lee «Consolidado de mantenciones / pendientes registradas» (detecta el tipo por encabezados). Puedes elegir varios a la vez.",()=>{closeDrawer();$("#fileConsolidado").click();}));
+  body.appendChild(item("Exportar respaldo JSON","Descarga todos los datos de usuario (reimportable).",()=>{closeDrawer();exportJSON();}));
+  body.appendChild(item("Exportar todo a Excel","Libro .xlsx con equipos, mantenciones, pendientes, correctivos, avances y resumen.",()=>{closeDrawer();exportAllXLSX();}));
+  body.appendChild(item("Importar respaldo JSON","Restaura desde un respaldo de esta app.",()=>{closeDrawer();$("#fileJson").click();}));
+  body.appendChild(item("Elegir carpeta de auto-guardado","Respaldo automático de JSON + Excel a una carpeta, sin clics (también al cerrar la pestaña). Requiere Chrome/Edge.",()=>{closeDrawer();chooseBackupFolder();}));
+  body.appendChild(el("hr",{class:"soft"}));
+  body.appendChild(item((recording?"⏸ Pausar grabación de uso":"▶ Reanudar grabación de uso")+` (${usageLog.length} eventos)`,"Activa por defecto. Registra navegación, búsquedas, filtros, paneles y avisos con marca de tiempo; se incluye en el respaldo.",()=>{closeDrawer();toggleRecording();}));
+  body.appendChild(item("Descargar grabación de uso","Exporta la bitácora + resumen y entorno como JSON para compartir conmigo.",()=>{closeDrawer();downloadUsageLog();}));
+  body.appendChild(item("Borrar grabación de uso","Vacía la bitácora de uso registrada.",()=>{closeDrawer();clearUsageLog();}));
+  body.appendChild(el("hr",{class:"soft"}));
+  body.appendChild(item("Diagnóstico de datos","Detecta registros sin equipo en la planilla y pendientes posiblemente duplicados.",()=>{closeDrawer();openDiagnostico();}));
+  body.appendChild(item("Reset total","Borra preferencias, planilla y datos de usuario.",()=>{closeDrawer();resetTotal();},"" ));
+  if(state.meta&&state.meta.ignoradosDetalle&&state.meta.ignoradosDetalle.length)
+    body.appendChild(el("div",{class:"small muted",style:"margin-top:10px"}, `${state.meta.ignoradosDetalle.length} celdas con datos sucios fueron ignoradas en la última carga.`));
+  openDrawer("Acciones", body);
+}
+function openImportOld(){
+  const body=el("div");
+  body.appendChild(el("div",{class:"banner info",style:"margin-top:0"},"Lee un respaldo de la app antigua (tipo respaldo-gmp2026). Importa mantenciones, pendientes y correctivos; equipos y registros se re-leen del .xlsm oficial."));
+  body.appendChild(el("p",{class:"small muted"},"Mapeo: manuales→mantenciones · tipos de pendiente traducidos a los 5 tipos · correctivos con sus avances. Campos renombrados (respEjec→respEjecutivo, gestiones→seguimiento, etc.)."));
+  body.appendChild(el("button",{class:"btn primary",onclick:()=>$("#fileOldBackup").click()},"Elegir archivo .json"));
+  openDrawer("Importar respaldo anterior", body);
+}
+
+/* ------------------------------ Bootstrap -------------------------------- */
+function wireUI(){
+  $("#btnLoadXlsm").addEventListener("click",()=>$("#fileXlsm").click());
+  $("#btnBackupNow").addEventListener("click",respaldarAhora);
+  $("#btnRec").addEventListener("click",toggleRecording);
+  $("#btnMenu").addEventListener("click",openMenu);
+  // Grabación de uso: registra clics en botones/accesos cuando está activa
+  document.addEventListener("click",(e)=>{
+    if(!recording) return;
+    const t=e.target.closest("button,a,.kpi,.heatcell,[data-rec]");
+    if(!t || t.id==="btnRec") return;
+    const label=(t.getAttribute("data-rec")||t.textContent||"").replace(/\s+/g," ").trim().slice(0,60);
+    recordEvent("click", label||t.tagName.toLowerCase());
+  },true);
+  $("#drawerClose").addEventListener("click",closeDrawer);
+  $("#drawerBack").addEventListener("click",closeDrawer);
+  $("#fileXlsm").addEventListener("change",e=>{ const f=e.target.files[0]; if(f)importXlsm(f); e.target.value=""; });
+  $("#fileJson").addEventListener("change",e=>{ const f=e.target.files[0]; if(f)importJSON(f); e.target.value=""; });
+  $("#fileOldBackup").addEventListener("change",e=>{ const f=e.target.files[0]; if(f){closeDrawer();importOldBackup(f);} e.target.value=""; });
+  $("#fileIntegrado").addEventListener("change",e=>{ const f=e.target.files[0]; if(f){closeDrawer();importIntegrado(f);} e.target.value=""; });
+  $("#fileConsolidado").addEventListener("change",async e=>{ const fs=Array.from(e.target.files); closeDrawer(); for(const f of fs) await importConsolidado(f); e.target.value=""; });
+
+  const SEARCH_VIEWS=["equipos","pendientes","correctivo","preventivo"]; // vistas donde la búsqueda filtra in situ
+  let deb;
+  $("#globalSearch").addEventListener("input",e=>{ clearTimeout(deb); deb=setTimeout(()=>{ ui.search=e.target.value;
+    if(e.target.value.trim()){ recordEvent("buscar",e.target.value.trim());
+      // La búsqueda aplica en Equipos, Pendientes y Correctivos; desde otras vistas, saltar a Equipos.
+      if(state.equipos.length && !SEARCH_VIEWS.includes(ui.view)){ ui.view="equipos"; recordEvent("nav","Auto → Equipos por búsqueda"); }
+    }
+    render(); },300); });
+  // Enter en la búsqueda: si queda un único equipo, abre su ficha directamente (1 gesto).
+  $("#globalSearch").addEventListener("keydown",e=>{
+    if(e.key!=="Enter") return;
+    clearTimeout(deb); ui.search=e.target.value;
+    if(state.equipos.length && !SEARCH_VIEWS.includes(ui.view)) ui.view="equipos";
+    render();
+    if(ui.view==="equipos"){ const res=filteredEquipos();
+      if(res.length===1){ recordEvent("atajo","Enter → abre único resultado "+res[0].inventario); openFicha(res[0].key); }
+      else recordEvent("atajo",`Enter en búsqueda (${res.length} resultados)`); }
+  });
+
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"){ closeDrawer(); closeFunnel(); }
+    // "/" enfoca la búsqueda (atajo de teclado, salvo si ya se escribe en un campo)
+    const tag=(document.activeElement&&document.activeElement.tagName)||"";
+    if(e.key==="/" && !["INPUT","TEXTAREA","SELECT"].includes(tag)){ e.preventDefault(); const s=$("#globalSearch"); s.focus(); s.select(); }
+  });
+  // Al ocultar/cerrar la pestaña: si hay carpeta de auto-guardado, escribir JSON+Excel (mejor esfuerzo);
+  // este evento es más fiable que beforeunload para operaciones asíncronas.
+  document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden"){ persistUsuario(); if(backupDirHandle && dirtySinceBackup) saveToFolder(); } });
+  window.addEventListener("pagehide",()=>{ persistUsuario(); if(backupDirHandle && dirtySinceBackup) saveToFolder(); });
+  // Aviso al cerrar SOLO si hay cambios y no hay auto-guardado a carpeta activo.
+  window.addEventListener("beforeunload",e=>{ if(dirtySinceBackup && !backupDirHandle){ e.preventDefault(); e.returnValue=""; } });
+}
+
+async function resetSilencioso(){
+  await idbDel(LS_PREF); await idbDel(LS_DATOS); await idbDel(LS_USUARIO);
+  try{ localStorage.removeItem(LS_PREF); localStorage.removeItem(LS_DATOS); localStorage.removeItem(LS_USUARIO);}catch(e){}
+  state={ equipos:[],registros:[],detalleMP:[],pendientes:[],correctivos:[],empresas:[],ingenieros:[],meta:null };
+  prefs={ columnasEquipos:null, columnasHistorial:null, ultimoEjecutor:"", ultimoTipoMant:"Interno", ultimaEmpresa:"", ultimoIngeniero:"" };
+  usageLog=[]; dirtySinceBackup=false; invalidarIndices();
+}
+(async function init(){
+  wireUI();
+  // Arranque limpio con #reset (abre index.html#reset para empezar sin datos)
+  if(location.hash.replace("#","").toLowerCase()==="reset"){
+    await resetSilencioso();
+    try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
+    toast("Iniciado sin datos. Carga el .xlsm para comenzar.");
+  } else {
+    await loadAll();
+  }
+  recordEvent("session","▶ Apertura · "+entornoSesion().pantalla+" · equipos:"+state.equipos.length);
+  render();
+})();
+</script>
+</body>
+</html>
