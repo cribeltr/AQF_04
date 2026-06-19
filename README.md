@@ -145,9 +145,26 @@ Documentada en `docs/` (fuente de verdad del comportamiento):
 - `docs/Diagramas_MP2026_ajustado.md` — proceso de mantenimiento (auditado).
 - `docs/arbol-pendientes.html` — modelo del módulo de pendientes (5 tipos / 3 orígenes).
 
-Puntos clave: clave del equipo = serie si existe, si no inventario · la planilla
-manda sobre la app · Borrador nace y se promueve a Oficial al recargar · cumplimiento
-solo cuenta `Si`/`Si-RA` · `C1/C5/C6/C7/C8` → reprogramación ≤30 días, `C2/C3/C4` sin fecha.
+Puntos clave: clave del equipo = serie si existe, si no inventario · **el `.xlsm`
+es una instantánea (semilla) del preventivo; el ESTADO REAL de cada equipo lo gestiona
+la app** (el último cambio de estado manda; si no hay ninguno, se deriva del `.xlsm`) ·
+Borrador nace y se promueve a Oficial al recargar · cumplimiento solo cuenta `Si`/`Si-RA`
+· `C1/C5/C6/C7/C8` → reprogramación ≤30 días, `C2/C3/C4` sin fecha.
+
+### Trazabilidad y estado (la app como sistema de registro)
+
+- **Estado del equipo gestionado por la app**: Operativo / No Operativo / Servicio
+  Técnico / Préstamo / No Ubicable / Baja. Se cambia desde la **ficha** o tocando el
+  badge de estado en la tabla de **Equipos** («Cambiar estado»: nuevo estado, motivo,
+  nota y responsable; opcional crear un pendiente de seguimiento). Cada cambio queda
+  registrado con **fecha/hora, responsable y motivo**.
+- **Trazabilidad completa**: la **bitácora** de cada equipo unifica cambios de estado,
+  MP, pendientes (y su seguimiento) y correctivos, filtrable por tipo (incluye «Estado»).
+- **Última actualización**: columna en Equipos y dato en la ficha con lo más reciente
+  registrado sobre el equipo; panel **«Actividad reciente»** en el Tablero.
+- **Exportación**: la hoja **Bitácora** incluye los cambios de estado; **Equipos** añade
+  «Estado fijado en app» y «Última actualización». Los indicadores de operatividad y las
+  hojas «Servicio Técnico» / «No Operativos» reflejan el estado real gestionado en la app.
 
 ## Estructura del repositorio
 

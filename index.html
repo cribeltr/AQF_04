@@ -537,7 +537,10 @@ const REG_R_COL_LETTER = ["U","W","Y","AA","AC","AE","AG","AI","AK","AM","AO","A
 /* ----------------------------- Estado global ----------------------------- */
 let state = {
   equipos: [], registros: [], detalleMP: [], pendientes: [], correctivos: [],
-  empresas: [], ingenieros: [], meta: null
+  empresas: [], ingenieros: [], meta: null,
+  // Estado real de cada equipo gestionado por la app (fuente de verdad + trazabilidad).
+  // El .xlsm es solo una instantánea del preventivo; el estado vivo lo fija la app.
+  eventosEstado: []
 };
 let prefs = { columnasEquipos: null, ultimoEjecutor:"", ultimoTipoMant:"Interno", ultimaEmpresa:"", ultimoIngeniero:"" };
 let ui = {
@@ -643,7 +646,7 @@ async function persistDatos(){
   await idbSet(LS_DATOS, datos); lsSet(LS_DATOS, datos);
 }
 async function persistUsuario(){
-  const u = { detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros };
+  const u = { detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros, eventosEstado:state.eventosEstado };
   await idbSet(LS_USUARIO, u); lsSet(LS_USUARIO, u);
 }
 async function persistPrefs(){ await idbSet(LS_PREF, prefs); lsSet(LS_PREF, prefs); }
@@ -669,7 +672,7 @@ function recuperarSesion(){
   if(!_recuperable) return;
   const { d, u } = _recuperable;
   if(d){ state.equipos=d.equipos||[]; state.registros=d.registros||[]; state.meta=d.meta||null; }
-  if(u){ state.detalleMP=u.detalleMP||[]; state.pendientes=u.pendientes||[]; state.correctivos=u.correctivos||[]; state.empresas=u.empresas||[]; state.ingenieros=u.ingenieros||[]; }
+  if(u){ state.detalleMP=u.detalleMP||[]; state.pendientes=u.pendientes||[]; state.correctivos=u.correctivos||[]; state.empresas=u.empresas||[]; state.ingenieros=u.ingenieros||[]; state.eventosEstado=u.eventosEstado||[]; }
   _recuperable=null; invalidarIndices(); dirtySinceBackup=false; render();
   toast("Trabajo de la última sesión recuperado.");
 }
@@ -686,7 +689,7 @@ async function resetTotal(){
   if(!confirm("Reset total: borra preferencias, planilla y datos de usuario del navegador. ¿Continuar?")) return;
   await idbDel(LS_PREF); await idbDel(LS_DATOS); await idbDel(LS_USUARIO);
   try{ localStorage.removeItem(LS_PREF); localStorage.removeItem(LS_DATOS); localStorage.removeItem(LS_USUARIO);}catch(e){}
-  state={ equipos:[],registros:[],detalleMP:[],pendientes:[],correctivos:[],empresas:[],ingenieros:[],meta:null };
+  state={ equipos:[],registros:[],detalleMP:[],pendientes:[],correctivos:[],empresas:[],ingenieros:[],meta:null,eventosEstado:[] };
   prefs={ columnasEquipos:null, ultimoEjecutor:"", ultimoTipoMant:"Interno", ultimaEmpresa:"", ultimoIngeniero:"" };
   dirtySinceBackup=false; render(); toast("Datos borrados.");
 }
@@ -1144,7 +1147,40 @@ function dedupReprogramaciones(){
   return removeIds.size;
 }
 
+// ===== Estado del equipo gestionado por la app (fuente de verdad + trazabilidad) =====
+function eventosEstadoDe(key){ return state.eventosEstado.filter(ev=>ev.equipoKey===key); }
+function ultimoEventoEstado(key){
+  let last=null;
+  for(const ev of state.eventosEstado){ if(ev.equipoKey===key && ev.estado){ if(!last || String(ev.fecha)>String(last.fecha)) last=ev; } }
+  return last;
+}
+// Registra un cambio de estado (queda en la bitácora con fecha/hora, motivo y responsable).
+async function registrarEstado(key, estado, motivo, nota, por){
+  const ev={ id:uid(), equipoKey:key, fecha:new Date().toISOString(), estado, motivo:motivo||"", nota:nota||"", por:por||prefs.ultimoEjecutor||"" };
+  state.eventosEstado.push(ev);
+  if(por) prefs.ultimoEjecutor=por;
+  await markDirty("usuario");
+  return ev;
+}
+// Marca de «última actualización»: lo más reciente registrado sobre el equipo.
+function ultActividad(key){
+  let t="";
+  const up=v=>{ if(v && String(v)>t) t=String(v); };
+  for(const m of mpByEquipo(key)){ up(m.fecha); up(m.creado); }
+  for(const p of pendByEquipo(key)){ up(p.creado); up(p.fechaReporte); up(p.fechaCompletado); (p.seguimiento||[]).forEach(s=>up(s.fecha)); }
+  for(const c of corrByEquipo(key)){ up(c.fechaDocumento); up(c.fechaCierre); (c.avances||[]).forEach(a=>up(a.fecha||a.registrado)); }
+  for(const ev of eventosEstadoDe(key)) up(ev.fecha);
+  return t;
+}
+function fmtDateTime(iso){ if(!iso) return "—"; const s=String(iso);
+  if(s.includes("T")){ const d=new Date(s); if(!isNaN(d)) return `${fmtDate(s)} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
+  return fmtDate(s); }
+
 function estadoEquipo(key){
+  // 1) Fuente de verdad: el estado fijado en la app (el evento más reciente manda).
+  const evManual=ultimoEventoEstado(key);
+  if(evManual) return evManual.estado;
+  // 2) Semilla: sin estado en la app, se DERIVA del .xlsm (snapshot) + correctivos.
   // Baja tiene prioridad máxima
   for(let m=11;m>=0;m--){ const r=resultadoMes(key,m); if(r.resultado==="Baja") return "Baja"; }
   // correctivo abierto → No Operativo / Servicio Técnico
@@ -1502,6 +1538,27 @@ function viewTablero(){
   }
   cols.appendChild(pvCard);
   wrap.appendChild(cols);
+
+  // Actividad reciente (trazabilidad global): últimos eventos registrados.
+  const act=buildBitacora().slice(0,10);
+  const actCard=el("div",{class:"card"});
+  actCard.appendChild(el("h3",{},"Actividad reciente ",el("span",{class:"count"},`(${act.length})`)));
+  if(!act.length) actCard.appendChild(el("div",{class:"small muted"},"Sin actividad registrada todavía."));
+  else {
+    const tw=el("div",{class:"tablewrap dense"}); const t=el("table",{class:"grid"});
+    t.appendChild(el("thead",{},el("tr",{},...["Fecha","Equipo","Categoría","Evento","Responsable"].map(h=>el("th",{},h)))));
+    const tb=el("tbody",{});
+    for(const r of act){ const eq=state.equipos.find(x=>x.inventario===r["N° Inventario"]);
+      tb.appendChild(el("tr",{class:eq?"clickable":"",onclick:eq?()=>openFicha(eq.key):null},
+        el("td",{class:"small nowrap"}, fmtDate(r.Fecha)),
+        el("td",{}, esc(r.Equipo||""), el("div",{class:"faint mono"}, r["N° Inventario"]||"")),
+        el("td",{class:"small"}, esc(r.Categoría||"")),
+        el("td",{class:"small"}, esc(r.Evento||"")),
+        el("td",{class:"small faint"}, esc(r.Responsable||""))));
+    }
+    t.appendChild(tb); tw.appendChild(t); actCard.appendChild(tw);
+  }
+  wrap.appendChild(actCard);
   return wrap;
 }
 function goEquipos(quick){ ui.view="equipos"; ui.quick=Object.assign({familia:"",servicio:"",estado:"",mes:""},quick||{}); render(); }
@@ -1527,8 +1584,9 @@ const EQ_COLUMNS = [
   { f:"frecuencia", h:"Frecuencia" },
   { f:"_estado", h:"Estado", special:true },
   { f:"_pend", h:"Tareas", special:true },
+  { f:"_ultact", h:"Última actualización", special:true },
 ];
-const EQ_DEFAULT_COLS = ["inventario","equipo","serie","servicio","ubicacion","_estado","_pend"];
+const EQ_DEFAULT_COLS = ["inventario","equipo","serie","servicio","ubicacion","_estado","_pend","_ultact"];
 
 function visibleEqColumns(){
   if(prefs.columnasEquipos && prefs.columnasEquipos.length) return EQ_COLUMNS.filter(c=>prefs.columnasEquipos.includes(c.f));
@@ -1537,6 +1595,7 @@ function visibleEqColumns(){
 function eqFieldValue(e,f){
   if(f==="_estado") return estadoEquipo(e.key);
   if(f==="_pend"){ const n=pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length; return n?String(n):""; }
+  if(f==="_ultact") return ultActividad(e.key)||"";
   return e[f]||"";
 }
 function filteredEquipos(){
@@ -1634,9 +1693,10 @@ function viewEquipos(){
   for(const e of rows.slice(0,1200)){
     const tr=el("tr",{class:"clickable",onclick:()=>openFicha(e.key)});
     for(const c of cols){
-      if(c.f==="_estado") tr.appendChild(el("td",{}, badgeEstado(estadoEquipo(e.key))));
+      if(c.f==="_estado") tr.appendChild(el("td",{}, el("span",{style:"cursor:pointer",title:"Cambiar estado del equipo",onclick:(ev)=>{ev.stopPropagation();openEstadoForm(e.key,false);}}, badgeEstado(estadoEquipo(e.key)))));
       else if(c.f==="_pend"){ const n=pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length;
         tr.appendChild(el("td",{}, n?el("span",{class:"badge "+(pendByEquipo(e.key).some(pendienteVencido)?"b-bad":"b-warn"),style:"cursor:pointer",title:"Ver pendientes de este equipo",onclick:(ev)=>{ev.stopPropagation();goPendientes(e.key);}}, n+" pend."):"")); }
+      else if(c.f==="_ultact"){ const u=ultActividad(e.key); tr.appendChild(el("td",{class:"small faint nowrap"}, u?fmtDateTime(u):"—")); }
       else tr.appendChild(el("td",{class:c.mono?"mono":""}, esc(e[c.f]||"")));
     }
     tb.appendChild(tr);
@@ -1734,8 +1794,16 @@ function openFicha(key){
   }
   // datos
   const est=estadoEquipo(key);
-  body.appendChild(el("div",{class:"tag-row",style:"margin-bottom:10px"}, badgeEstado(est),
-    el("span",{class:"pill"},"Familia: "+(e.fam||"—")), e.frecuencia?el("span",{class:"pill"},"MP "+e.frecuencia):null));
+  const evEst=ultimoEventoEstado(key);
+  const ult=ultActividad(key);
+  body.appendChild(el("div",{class:"tag-row",style:"margin-bottom:6px;align-items:center"}, badgeEstado(est),
+    el("button",{class:"btn sm",onclick:()=>{ fichaReturnKey=key; openEstadoForm(key,true); }},"Cambiar estado"),
+    el("span",{class:"pill"},"Familia: "+(e.fam||"—")), e.frecuencia?el("span",{class:"pill"},"MP "+e.frecuencia):null,
+    el("span",{class:"spacer",style:"flex:1"}),
+    el("span",{class:"faint small"}, "Últ. actualización: "+(ult?fmtDateTime(ult):"—"))));
+  body.appendChild(el("div",{class:"small muted",style:"margin-bottom:10px"},
+    evEst ? `Estado fijado en la app el ${fmtDateTime(evEst.fecha)}${evEst.por?(" · "+esc(evEst.por)):""}${evEst.motivo?(" · "+esc(evEst.motivo)):""}`
+          : "Estado derivado de la planilla (.xlsm). Usa «Cambiar estado» para fijar el estado real."));
   const kv=el("dl",{class:"kv"});
   const add=(k,v)=>{ kv.appendChild(el("dt",{},k)); kv.appendChild(el("dd",{}, v||"—")); };
   add("ID", e.idPlanilla);
@@ -1826,7 +1894,7 @@ function openFicha(key){
     }
     // filtros
     const fb=el("div",{class:"filterbar"});
-    [["","Todo"],["MP","MP"],["Pendiente","Pendientes"],["Correctivo","Correctivos"]].forEach(([v,t])=>{
+    [["","Todo"],["Estado","Estado"],["MP","MP"],["Pendiente","Pendientes"],["Correctivo","Correctivos"]].forEach(([v,t])=>{
       fb.appendChild(el("button",{class:"btn sm"+(histState.grupo===v?" primary":""),onclick:()=>{ histState.grupo=v; paintHist(); }},t));
     });
     const qi=el("input",{placeholder:"Filtrar en el historial…",value:histState.q,style:"flex:1;min-width:120px"});
@@ -1903,7 +1971,13 @@ function buildTimeline(key){
     if(c.fechaCierre) items.push({ fecha:c.fechaCierre, grupo:"Correctivo", tipo:"Correctivo · cierre", cls:"tl-corr", ico:"⚒",
       titulo:"Correctivo cerrado", detalle:"", ejecutor:"", estadoEquipo:c.estadoEquipo||"", resultado:"Cerrado", edit:{kind:"corr",id:c.id} });
   }
-  return items.filter(i=>i.fecha).sort((a,b)=> String(b.fecha).slice(0,10).localeCompare(String(a.fecha).slice(0,10)));
+  // Cambios de estado gestionados en la app (trazabilidad de operatividad)
+  for(const ev of eventosEstadoDe(key)){
+    items.push({ fecha:ev.fecha, grupo:"Estado", tipo:"Cambio de estado", cls:"tl-corr", ico:"◉",
+      titulo:`Estado → ${ev.estado}`, detalle:[ev.motivo, ev.nota].filter(Boolean).join(" · "),
+      ejecutor:ev.por||"", estadoEquipo:ev.estado, resultado:"" });
+  }
+  return items.filter(i=>i.fecha).sort((a,b)=> String(b.fecha).localeCompare(String(a.fecha)));
 }
 
 // Columnas configurables del historial del equipo
@@ -2530,6 +2604,30 @@ function badgeEstado(est){
   const map={ "Operativo":"b-ok","No Operativo":"b-bad","Servicio Técnico":"b-warn","Préstamo":"b-info","No Ubicable":"b-warn","Baja":"b-neutral" };
   return el("span",{class:"badge "+(map[est]||"b-neutral")}, est||"—");
 }
+// Cambiar el estado real del equipo (queda registrado en la bitácora con trazabilidad).
+function openEstadoForm(key, volverAFicha){
+  const e=equipoByKey(key); if(!e) return;
+  const f={ estado:estadoEquipo(key), motivo:"", nota:"", por:prefs.ultimoEjecutor||RESP_ADMIN_DEFAULT, crearPend:false };
+  const body=el("div");
+  body.appendChild(el("div",{class:"banner info",style:"margin-top:0"}, `Estado real de ${esc(e.inventario||"")} — ${esc(e.equipo||"")}. Queda registrado (fecha, responsable y motivo) en la bitácora del equipo.`));
+  body.appendChild(selField("Nuevo estado","estado",f, ESTADOS_EQUIPO.map(s=>({v:s,t:s}))));
+  body.appendChild(textField("Motivo (ej. enviado a servicio técnico, falla, repuesto…)","motivo",f));
+  body.appendChild(txtField("Nota / detalle (opcional)","nota",f));
+  body.appendChild(comboField("Responsable","por",f,EJECUTORES));
+  const chk=el("label",{class:"check"}); const cb=el("input",{type:"checkbox"});
+  cb.addEventListener("change",()=>f.crearPend=cb.checked); chk.appendChild(cb);
+  chk.appendChild(el("span",{},"Crear un pendiente de seguimiento para este cambio"));
+  body.appendChild(chk);
+  openDrawer("Cambiar estado del equipo", body, [
+    { label:"Guardar estado", cls:"primary", act:async()=>{
+        await registrarEstado(key, f.estado, f.motivo, f.nota, f.por);
+        if(f.crearPend) openPendForm(null,{ equipoKey:key, tipo:"otro", descripcion:`[${f.estado}] ${f.motivo||""}`.trim(), enEsperaDe:f.estado==="Servicio Técnico"?"Servicio técnico":"" });
+        else { closeDrawer(); if(volverAFicha) openFicha(key); else render(); }
+        toast("Estado actualizado: "+f.estado);
+      } },
+    { label:"Cancelar", cls:"", act:()=>{ closeDrawer(); if(volverAFicha) openFicha(key); } },
+  ]);
+}
 function badgeResultado(res){
   if(!res) return el("span",{class:"faint"},"—");
   let cls="b-neutral";
@@ -2630,6 +2728,10 @@ function buildBitacora(){
       Categoría:"Correctivo · Folio "+(c.folioSigem||""), Evento:"Apertura de expediente", "Estado equipo":c.estadoEquipo||"", Responsable:c.tecnico||"", Detalle:"", Referencia:"Estado: "+(c.estadoEvento||"") });
     for(const a of (c.avances||[])) ev.push({ Fecha:(a.fecha||"").slice(0,10), "N° Inventario":e.inventario||"", Equipo:e.equipo||"", Servicio:e.servicio||"",
       Categoría:"Correctivo · Folio "+(c.folioSigem||""), Evento:a.tipo||"Avance", "Estado equipo":a.estadoEquipo||"", Responsable:a.responsable||a.empresa||"", Detalle:a.detalle||"", Referencia:a.numero||"" }); }
+  for(const ce of state.eventosEstado){ const e=eqOf(ce.equipoKey);
+    ev.push({ Fecha:(ce.fecha||"").slice(0,10), "N° Inventario":e.inventario||"", Equipo:e.equipo||"", Servicio:e.servicio||"",
+      Categoría:"Estado del equipo", Evento:"Cambio de estado → "+(ce.estado||""), "Estado equipo":ce.estado||"",
+      Responsable:ce.por||"", Detalle:[ce.motivo, ce.nota].filter(Boolean).join(" · "), Referencia:"" }); }
   ev.sort((a,b)=> (a.Fecha<b.Fecha?1:(a.Fecha>b.Fecha?-1:0)));
   return ev;
 }
@@ -2639,7 +2741,7 @@ function exportJSON(exp){
   const payload={ app:APP_NAME, tipo:"respaldo-gmp2026-v3", version:3, exportId:exp.id, exportSeq:exp.seq,
     fecha:exp.fecha, meta:state.meta,
     detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos,
-    empresas:state.empresas, ingenieros:state.ingenieros, prefs };
+    empresas:state.empresas, ingenieros:state.ingenieros, eventosEstado:state.eventosEstado, prefs };
   download(`GEC-HHHA-${exp.id}.json`, JSON.stringify(payload,null,2));
   dirtySinceBackup=false; changesSinceFolderSave=0; render(); toast("Respaldo JSON exportado · "+exp.id);
 }
@@ -2655,7 +2757,7 @@ function safetyDump(){
   try{
     const exp=nuevoExportId();
     const payload={ app:APP_NAME, tipo:"respaldo-gmp2026-v3", version:3, exportId:exp.id, exportSeq:exp.seq, fecha:exp.fecha, meta:state.meta,
-      detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros, prefs };
+      detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros, eventosEstado:state.eventosEstado, prefs };
     download(`GEC-HHHA-seguridad-${exp.id}.json`, JSON.stringify(payload));
   }catch(e){}
 }
@@ -2670,6 +2772,7 @@ async function importJSON(file){
     if(data.correctivos) state.correctivos=data.correctivos;
     if(data.empresas) state.empresas=data.empresas;
     if(data.ingenieros) state.ingenieros=data.ingenieros;
+    if(data.eventosEstado) state.eventosEstado=data.eventosEstado;
     if(data.prefs) prefs=Object.assign(prefs,data.prefs);
     promoverBorradores();
     const dropRep=dedupReprogramaciones();
@@ -2730,7 +2833,9 @@ function buildWorkbook(exp){
     ID:e.idPlanilla, "N° Carpeta":e.carpeta, "N° Inventario":e.inventario, Equipo:e.equipo, Servicio:e.servicio,
     Unidad:e.unidad, Ubicación:e.ubicacion, Procedencia:e.procedencia, Marca:e.marca, Modelo:e.modelo, "N° Serie":e.serie,
     "Año Instalación":e.anio, "Vida Útil Residual":e.vidaUtil, Clasificación:e.clasif, Familia:e.fam, Frecuencia:e.frecuencia,
-    Estado:estadoEquipo(e.key), "Pendientes abiertos": pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length
+    Estado:estadoEquipo(e.key), "Estado fijado en app": ultimoEventoEstado(e.key)?"Sí":"No (derivado)",
+    "Pendientes abiertos": pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length,
+    "Última actualización": ultActividad(e.key)||""
   })), "Equipos");
 
   // 2) Bitácora unificada (registro cronológico de actividad)
@@ -2796,7 +2901,7 @@ async function saveToFolder(){
     const exp=nuevoExportId();
     // JSON reimportable (con ID de exportación)
     const payload={ app:APP_NAME, tipo:"respaldo-gmp2026-v3", version:3, exportId:exp.id, exportSeq:exp.seq, fecha:exp.fecha, meta:state.meta,
-      detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros, prefs };
+      detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros, eventosEstado:state.eventosEstado, prefs };
     const fhJ=await backupDirHandle.getFileHandle(`GEC-HHHA.json`,{create:true});
     const wJ=await fhJ.createWritable(); await wJ.write(JSON.stringify(payload,null,2)); await wJ.close();
     // Excel legible (mismo libro y mismo ID que "Respaldar ahora")
@@ -3101,7 +3206,7 @@ function wireUI(){
 async function resetSilencioso(){
   await idbDel(LS_PREF); await idbDel(LS_DATOS); await idbDel(LS_USUARIO);
   try{ localStorage.removeItem(LS_PREF); localStorage.removeItem(LS_DATOS); localStorage.removeItem(LS_USUARIO);}catch(e){}
-  state={ equipos:[],registros:[],detalleMP:[],pendientes:[],correctivos:[],empresas:[],ingenieros:[],meta:null };
+  state={ equipos:[],registros:[],detalleMP:[],pendientes:[],correctivos:[],empresas:[],ingenieros:[],meta:null,eventosEstado:[] };
   prefs={ columnasEquipos:null, columnasHistorial:null, ultimoEjecutor:"", ultimoTipoMant:"Interno", ultimaEmpresa:"", ultimoIngeniero:"" };
   _recuperable=null; dirtySinceBackup=false; invalidarIndices();
 }
