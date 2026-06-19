@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Gestión MP 2026 · Consola de Equipamiento Clínico HHHA</title>
+<title>Gestión de equipos críticos HHHA</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -116,14 +116,6 @@ input,select,textarea{font-family:inherit; font-size:14px; color:var(--ink)}
 .btn.ghost{border-color:transparent; background:transparent}
 .btn.ghost:hover{background:var(--panel)}
 .btn[disabled]{opacity:.45; cursor:not-allowed}
-/* indicador de grabación: pastilla con LED */
-#btnRec{position:relative; padding-left:24px; color:var(--muted)}
-#btnRec::before{content:""; position:absolute; left:11px; top:50%; transform:translateY(-50%);
-  width:8px; height:8px; border-radius:50%; background:var(--led-idle)}
-#btnRec.on{background:var(--bad-tint); color:var(--bad); border-color:#f1c9c1}
-#btnRec.on::before{background:var(--led-bad); box-shadow:0 0 0 3px rgba(223,75,55,.18); animation:recblink 1.5s ease-in-out infinite}
-@keyframes recblink{50%{opacity:.45}}
-
 /* ============================== Estructura ============================== */
 .shell{display:flex; flex:1; min-height:0}
 .nav{
@@ -431,7 +423,7 @@ table.grid tbody tr.kb-focus td:first-child{ box-shadow:inset 3px 0 0 var(--acce
 <div class="topbar">
   <div class="brand">
     <span class="brand-mark" aria-hidden="true">MP</span>
-    <span class="brand-text">Gestión MP 2026<small>Equipamiento Clínico · HHHA</small></span>
+    <span class="brand-text">Gestión de equipos críticos<small>HHHA · Equipamiento clínico</small></span>
   </div>
   <div class="search">
     <input id="globalSearch" type="search" placeholder="Buscar equipo — inventario, nombre, serie, servicio…   ·   / enfoca · Enter abre" autocomplete="off">
@@ -439,7 +431,6 @@ table.grid tbody tr.kb-focus td:first-child{ box-shadow:inset 3px 0 0 var(--acce
   <div class="topactions">
     <button class="btn primary" id="btnLoadXlsm">Cargar .xlsm</button>
     <button class="btn" id="btnBackupNow" title="Exporta respaldo JSON (reimportable) + libro Excel">Respaldar ahora</button>
-    <button class="btn" id="btnRec" title="Grabación de uso activa: registra navegación, búsquedas, filtros y acciones (con marca de tiempo) y se incluye en el respaldo, para analizar cómo usas la app y proponer mejoras. Clic para pausar.">● Grabando</button>
     <button class="btn sm" id="btnCmd" title="Buscar equipo o ejecutar acción (⌘K / Ctrl+K)">⌘K</button>
     <button class="btn icon" id="btnTheme" title="Tema claro/oscuro">☾</button>
     <button class="btn icon" id="btnDensity" title="Densidad compacta/cómoda">▦</button>
@@ -553,36 +544,9 @@ let dirtySinceBackup = false;
 let backupDirHandle = null; // File System Access API
 let changesSinceFolderSave = 0;
 
-/* Grabación de uso: bitácora de navegación/acciones con marca de tiempo.
-   Siempre activa por defecto (buffer rotativo) para que el respaldo capture el
-   uso real y poder analizarlo y proponer mejoras. El botón pausa/reanuda. */
-let usageLog = [];
-let recording = true;
-let _lastLoggedView = null;
-function recordEvent(type, detail){
-  if(!recording) return;
-  usageLog.push({ t:new Date().toISOString(), view:ui.view, type, detail:String(detail==null?"":detail).replace(/\s+/g," ").trim().slice(0,160) });
-  if(usageLog.length>6000) usageLog.splice(0, usageLog.length-6000);
-}
-function toggleRecording(){
-  if(!recording){ recording=true; _lastLoggedView=null; recordEvent("session","▶ Reanudada"); toast("Grabación de uso reanudada."); }
-  else { recordEvent("session","⏸ Pausada"); recording=false; toast(`Grabación pausada — ${usageLog.length} eventos.`); persistUsuario(); }
-  syncRecBtn();
-}
-function syncRecBtn(){ const b=document.getElementById("btnRec"); if(!b) return;
-  b.classList.toggle("on",recording); b.textContent = recording? "● Grabando ("+usageLog.length+")" : "▶ Reanudar grabación"; }
-function downloadUsageLog(){
-  if(!usageLog.length){ toast("No hay grabación que descargar."); return; }
-  download(`grabacion-uso-MP2026-${todayISO()}.json`, JSON.stringify({ tipo:"grabacion-uso-gmp2026", fecha:new Date().toISOString(), entorno:entornoSesion(), resumen:resumenUso(), eventos:usageLog }, null, 2));
-}
-function clearUsageLog(){ if(!usageLog.length){ toast("Nada que borrar."); return; } if(confirm("¿Borrar la grabación de uso ("+usageLog.length+" eventos)?")){ usageLog=[]; persistUsuario(); syncRecBtn(); toast("Grabación borrada."); } }
-function entornoSesion(){ return { pantalla:`${window.innerWidth}×${window.innerHeight}`, agente:navigator.userAgent, version:"v3",
-  datos:{ equipos:state.equipos.length, mantenciones:state.detalleMP.length, pendientes:state.pendientes.length, correctivos:state.correctivos.length } }; }
-function resumenUso(){
-  const porTipo={}, porVista={};
-  for(const e of usageLog){ porTipo[e.type]=(porTipo[e.type]||0)+1; if(e.view)porVista[e.view]=(porVista[e.view]||0)+1; }
-  return { eventos:usageLog.length, desde:usageLog[0]?.t, hasta:usageLog[usageLog.length-1]?.t, porTipo, porVista };
-}
+/* La grabación de uso fue retirada. Se conserva un stub no-op para no romper los
+   puntos de llamada existentes; no registra, no almacena ni exporta nada. */
+function recordEvent(){ /* no-op: grabación de uso eliminada */ }
 
 /* ------------------------------ Utilidades ------------------------------- */
 const $ = (s,r=document)=>r.querySelector(s);
@@ -670,7 +634,7 @@ async function persistDatos(){
   await idbSet(LS_DATOS, datos); lsSet(LS_DATOS, datos);
 }
 async function persistUsuario(){
-  const u = { detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros, usageLog };
+  const u = { detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros };
   await idbSet(LS_USUARIO, u); lsSet(LS_USUARIO, u);
 }
 async function persistPrefs(){ await idbSet(LS_PREF, prefs); lsSet(LS_PREF, prefs); }
@@ -687,7 +651,6 @@ async function loadAll(){
   if(u){
     state.detalleMP=u.detalleMP||[]; state.pendientes=u.pendientes||[];
     state.correctivos=u.correctivos||[]; state.empresas=u.empresas||[]; state.ingenieros=u.ingenieros||[];
-    usageLog=u.usageLog||[];
   }
 }
 async function markDirty(persist="usuario"){
@@ -1379,8 +1342,6 @@ function render(){
     case "resumen": v.appendChild(viewResumen()); break;
     default: v.appendChild(viewTablero());
   }
-  if(recording && ui.view!==_lastLoggedView){ recordEvent("view","Vista: "+(NAV.find(n=>n.id===ui.view)?.label||ui.view)); _lastLoggedView=ui.view; }
-  syncRecBtn();
 }
 
 /* ----------------------------- Vista: Tablero ---------------------------- */
@@ -1432,6 +1393,23 @@ function viewTablero(){
   kpis.appendChild(kpi("Equipos detenidos", String(detenidos), `${enST.length} en servicio técnico`, detenidos?"alert":"ok", ()=>{ui.view="tablero";render();}));
   kpis.appendChild(kpi("Reprog. por firmar", String(firmar), "esperan 2 firmas", firmar?"warn":"ok", ()=>{ui.view="reprogramacion";render();}));
   wrap.appendChild(kpis);
+
+  // Indicadores de operatividad de la flota: Operativos / Servicio Técnico / No Operativos
+  const opr=operatividadResumen();
+  const estadoBand=el("div",{class:"card",style:"padding:12px 14px;margin-bottom:14px"});
+  estadoBand.appendChild(el("h3",{},"Operatividad de la flota ", el("span",{class:"count"},`(${opr.total} equipos)`)));
+  const band=el("div",{style:"display:flex;flex-wrap:wrap;gap:10px"});
+  const cell=(label,n,led,estado)=> el("button",{class:"btn",style:"flex:1 1 150px;min-width:140px;display:flex;align-items:center;gap:11px;justify-content:flex-start;padding:11px 13px;text-align:left",onclick:()=>goEquipos(estado?{estado}:{})},
+    el("span",{style:`width:12px;height:12px;border-radius:50%;flex:0 0 auto;background:${led};box-shadow:0 0 0 3px color-mix(in srgb, ${led} 22%, transparent)`}),
+    el("span",{style:"font-size:23px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.02em"},String(n)),
+    el("span",{class:"muted",style:"font-size:12px;font-weight:600"},label));
+  band.appendChild(cell("Operativos",opr["Operativo"],"var(--led-ok)","Operativo"));
+  band.appendChild(cell("En servicio técnico",opr["Servicio Técnico"],"var(--led-warn)","Servicio Técnico"));
+  band.appendChild(cell("No operativos",opr["No Operativo"],"var(--led-bad)","No Operativo"));
+  const otros=opr["Préstamo"]+opr["No Ubicable"]+opr["Baja"];
+  if(otros) band.appendChild(cell("Préstamo / NU / baja",otros,"var(--led-idle)",""));
+  estadoBand.appendChild(band);
+  wrap.appendChild(estadoBand);
 
   const cols=el("div",{class:"grid2"});
 
@@ -2243,6 +2221,20 @@ function viewPendientes(){
     el("button",{class:"btn sm",onclick:()=>exportTableXLSX(state.pendientes.map(pendRowForExport),"Pendientes")},"Exportar a Excel"),
     el("button",{class:"btn sm primary",onclick:()=>openPendForm(null,{})},"+ Pendiente"),
   ));
+
+  // Indicadores de gestión de pendientes (clic para filtrar)
+  const _abiertos=state.pendientes.filter(p=>p.estado!=="Completado");
+  const _venc=_abiertos.filter(pendienteVencido).length;
+  const _espera=_abiertos.filter(p=>(p.enEsperaDe||"").trim()).length;
+  const _compl=state.pendientes.filter(p=>p.estado==="Completado").length;
+  const pk=el("div",{class:"kpis"});
+  const pkpi=(label,val,sub,cls,act)=> el("div",{class:"kpi "+(cls||""),onclick:act}, el("div",{class:"k-label"},label), el("div",{class:"k-val"},String(val)), sub?el("div",{class:"k-sub"},sub):null);
+  pk.appendChild(pkpi("Abiertos",_abiertos.length,"por gestionar",_abiertos.length?"warn":"ok",()=>{ ui.pendEstado="Abierto"; render(); }));
+  pk.appendChild(pkpi("Vencidos",_venc,"pasada la fecha de compromiso",_venc?"alert":"ok",()=>{ ui.pendEstado="Abierto"; render(); }));
+  pk.appendChild(pkpi("En espera de terceros",_espera,"con «en espera de»","",()=>{ ui.pendEstado="Abierto"; render(); }));
+  pk.appendChild(pkpi("Completados",_compl,"histórico","ok",()=>{ ui.pendEstado="Completado"; render(); }));
+  wrap.appendChild(pk);
+
   // filtros
   const fb=el("div",{class:"filterbar"});
   if(ui.pendEquipo){ const e=equipoByKey(ui.pendEquipo);
@@ -2286,7 +2278,9 @@ function viewPendientes(){
       el("td",{class:"small"}, esc(p.respEjecutivo||"")),
       el("td",{}, p.estado==="Completado"?el("span",{class:"badge b-ok"},"Completado"):el("span",{class:"badge b-warn"},"Abierto")),
       el("td",{}, el("div",{class:"tag-row"},
-        p.estado!=="Completado"?el("button",{class:"btn sm",title:"Marcar completado sin abrir",onclick:async(ev)=>{ ev.stopPropagation(); p.estado="Completado"; p.fechaCompletado=todayISO(); await markDirty("usuario"); recordEvent("click","Completar pendiente inline (lista)"); render(); }},"✓"):null,
+        p.estado!=="Completado"
+          ? el("button",{class:"btn sm",title:"Marcar completado sin abrir",onclick:async(ev)=>{ ev.stopPropagation(); p.estado="Completado"; p.fechaCompletado=todayISO(); await markDirty("usuario"); render(); }},"✓")
+          : el("button",{class:"btn sm ghost",title:"Reabrir pendiente",onclick:async(ev)=>{ ev.stopPropagation(); p.estado="Abierto"; p.fechaCompletado=""; await markDirty("usuario"); render(); }},"↺"),
         el("button",{class:"btn sm ghost",onclick:(ev)=>{ev.stopPropagation();openPendForm(p);}},"Abrir")
       ))
     ));
@@ -2544,16 +2538,62 @@ function openVolcarPanel(pv){
 /* =========================================================================
    Exportar / Importar JSON · Excel · Respaldo a carpeta
    ========================================================================= */
-function exportJSON(){
-  const payload={ app:"Sistema de Gestión MP 2026 — Equipamiento Clínico HHHA", tipo:"respaldo-gmp2026-v3", version:3,
-    fecha:new Date().toISOString(), meta:state.meta,
-    detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos,
-    empresas:state.empresas, ingenieros:state.ingenieros, usageLog, usoResumen:resumenUso(), entorno:entornoSesion(), prefs };
-  download(`respaldo-MP2026-${todayISO()}.json`, JSON.stringify(payload,null,2));
-  dirtySinceBackup=false; changesSinceFolderSave=0; render(); toast("Respaldo JSON exportado.");
+const APP_NAME = "Gestión de equipos críticos HHHA";
+
+// Identificador único por exportación: cada versión exportada lleva un ID distinto
+// (sello de tiempo + aleatorio) y un número de versión incremental persistido.
+function nuevoExportId(){
+  const d=new Date(), p=n=>String(n).padStart(2,"0");
+  const stamp=`${d.getFullYear()}${p(d.getMonth()+1)}${p(d.getDate())}-${p(d.getHours())}${p(d.getMinutes())}${p(d.getSeconds())}`;
+  const rand=Math.random().toString(36).slice(2,6).toUpperCase();
+  prefs.exportSeq=(prefs.exportSeq||0)+1; persistPrefs();
+  return { id:`GEC-${stamp}-${rand}`, seq:prefs.exportSeq, fecha:d.toISOString() };
 }
-// "Respaldar ahora": genera el respaldo reimportable (JSON) y la estructura legible (Excel)
-function respaldarAhora(){ exportJSON(); exportAllXLSX(); }
+
+// Conteo de equipos por estado de operatividad (para indicadores y exportación).
+function operatividadResumen(){
+  const r={ "Operativo":0,"Servicio Técnico":0,"No Operativo":0,"Préstamo":0,"No Ubicable":0,"Baja":0 };
+  for(const e of state.equipos){ const s=estadoEquipo(e.key); r[s]=(r[s]||0)+1; }
+  r.total=state.equipos.length; return r;
+}
+
+// Bitácora unificada: una fila por evento (MP, pendiente y su seguimiento, correctivo),
+// ordenada de más reciente a más antigua. Es el registro compartible de actividad.
+function buildBitacora(){
+  const ev=[]; const eqOf=k=>equipoByKey(k)||{};
+  for(const m of state.detalleMP){ const e=eqOf(m.equipoKey);
+    ev.push({ Fecha:(m.fecha||m.creado||"").slice(0,10), "N° Inventario":e.inventario||"", Equipo:e.equipo||"", Servicio:e.servicio||"",
+      Categoría:"Mantenimiento preventivo", Evento:(RESULTADOS[m.resultado]||m.resultado||"Registro MP"),
+      "Estado equipo":m.estadoEquipo||"", Responsable:m.ejecutor||"", Detalle:m.observaciones||"", Referencia:m.tipoRegistro||"" }); }
+  for(const p of state.pendientes){ const e=eqOf(p.equipoKey); const tipo=PEND_TIPOS[p.tipo]?.label||p.tipo;
+    ev.push({ Fecha:(p.fechaReporte||p.creado||"").slice(0,10), "N° Inventario":e.inventario||"", Equipo:e.equipo||"", Servicio:e.servicio||"",
+      Categoría:"Pendiente · "+tipo, Evento:"Apertura de pendiente", "Estado equipo":"", Responsable:p.respEjecutivo||"",
+      Detalle:p.descripcion||"", Referencia:"Estado: "+(p.estado||"") });
+    for(const s of (p.seguimiento||[])) ev.push({ Fecha:(s.fecha||"").slice(0,10), "N° Inventario":e.inventario||"", Equipo:e.equipo||"", Servicio:e.servicio||"",
+      Categoría:"Pendiente · "+tipo, Evento:"Seguimiento", "Estado equipo":"", Responsable:s.autor||s.por||"", Detalle:s.texto||"", Referencia:"" });
+    if(p.estado==="Completado") ev.push({ Fecha:(p.fechaCompletado||"").slice(0,10), "N° Inventario":e.inventario||"", Equipo:e.equipo||"", Servicio:e.servicio||"",
+      Categoría:"Pendiente · "+tipo, Evento:"Cierre de pendiente", "Estado equipo":"", Responsable:p.respEjecutivo||"", Detalle:p.descripcion||"", Referencia:"" }); }
+  for(const c of state.correctivos){ const e=eqOf(c.equipoKey);
+    ev.push({ Fecha:(c.fechaDocumento||"").slice(0,10), "N° Inventario":e.inventario||"", Equipo:e.equipo||"", Servicio:e.servicio||"",
+      Categoría:"Correctivo · Folio "+(c.folioSigem||""), Evento:"Apertura de expediente", "Estado equipo":c.estadoEquipo||"", Responsable:c.tecnico||"", Detalle:"", Referencia:"Estado: "+(c.estadoEvento||"") });
+    for(const a of (c.avances||[])) ev.push({ Fecha:(a.fecha||"").slice(0,10), "N° Inventario":e.inventario||"", Equipo:e.equipo||"", Servicio:e.servicio||"",
+      Categoría:"Correctivo · Folio "+(c.folioSigem||""), Evento:a.tipo||"Avance", "Estado equipo":a.estadoEquipo||"", Responsable:a.responsable||a.empresa||"", Detalle:a.detalle||"", Referencia:a.numero||"" }); }
+  ev.sort((a,b)=> (a.Fecha<b.Fecha?1:(a.Fecha>b.Fecha?-1:0)));
+  return ev;
+}
+
+function exportJSON(exp){
+  exp = exp || nuevoExportId();
+  const payload={ app:APP_NAME, tipo:"respaldo-gmp2026-v3", version:3, exportId:exp.id, exportSeq:exp.seq,
+    fecha:exp.fecha, meta:state.meta,
+    detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos,
+    empresas:state.empresas, ingenieros:state.ingenieros, prefs };
+  download(`GEC-HHHA-${exp.id}.json`, JSON.stringify(payload,null,2));
+  dirtySinceBackup=false; changesSinceFolderSave=0; render(); toast("Respaldo JSON exportado · "+exp.id);
+}
+// "Respaldar ahora": genera el respaldo reimportable (JSON) y la estructura legible
+// (Excel) con el MISMO ID de exportación.
+function respaldarAhora(){ const exp=nuevoExportId(); exportJSON(exp); exportAllXLSX(exp); }
 async function importJSON(file){
   try{
     const data=JSON.parse(await file.text());
@@ -2565,7 +2605,6 @@ async function importJSON(file){
     if(data.correctivos) state.correctivos=data.correctivos;
     if(data.empresas) state.empresas=data.empresas;
     if(data.ingenieros) state.ingenieros=data.ingenieros;
-    if(Array.isArray(data.usageLog)) usageLog=data.usageLog;
     if(data.prefs) prefs=Object.assign(prefs,data.prefs);
     promoverBorradores();
     const dropRep=dedupReprogramaciones();
@@ -2587,47 +2626,94 @@ function exportTableXLSX(rows, name){
   XLSX.writeFile(wb, `${name}-${todayISO()}.xlsx`);
 }
 
-// Respaldo completo en estructura Excel: un libro .xlsx con una hoja por colección
-function buildWorkbook(){
+// Estructura de exportación compartible y autoexplicativa (se puede trabajar sin la
+// app): hojas Resumen (con ID único + indicadores), Equipos, Bitácora, Pendientes,
+// Servicio Técnico, No Operativos, y el detalle de Mantenciones/Correctivos/Resumen.
+function buildWorkbook(exp){
+  exp = exp || nuevoExportId();
   const wb=XLSX.utils.book_new();
   const addSheet=(rows,name)=>{ const ws=XLSX.utils.json_to_sheet(rows.length?rows:[{ "(sin datos)":"" }]); XLSX.utils.book_append_sheet(wb,ws,name.slice(0,31)); };
+  const op=operatividadResumen();
+  const pendAbiertos=state.pendientes.filter(p=>p.estado!=="Completado");
+  const pendVenc=pendAbiertos.filter(pendienteVencido).length;
 
-  // Equipos (con estado y nº de pendientes derivados)
+  // 0) Resumen / metadatos — ID ÚNICO de exportación + indicadores de operatividad
+  addSheet([
+    { Campo:"Aplicación", Valor:APP_NAME },
+    { Campo:"ID de exportación", Valor:exp.id },
+    { Campo:"N° de versión", Valor:exp.seq },
+    { Campo:"Fecha de exportación", Valor:exp.fecha },
+    { Campo:"Planilla origen", Valor:(state.meta&&state.meta.archivo)||"" },
+    { Campo:"—", Valor:"—" },
+    { Campo:"Equipos (total)", Valor:op.total },
+    { Campo:"Operativos", Valor:op["Operativo"] },
+    { Campo:"En servicio técnico", Valor:op["Servicio Técnico"] },
+    { Campo:"No operativos", Valor:op["No Operativo"] },
+    { Campo:"En préstamo", Valor:op["Préstamo"] },
+    { Campo:"No ubicables", Valor:op["No Ubicable"] },
+    { Campo:"De baja", Valor:op["Baja"] },
+    { Campo:"—", Valor:"—" },
+    { Campo:"Pendientes abiertos", Valor:pendAbiertos.length },
+    { Campo:"Pendientes vencidos", Valor:pendVenc },
+    { Campo:"Mantenciones registradas", Valor:state.detalleMP.length },
+    { Campo:"Correctivos (expedientes)", Valor:state.correctivos.length },
+  ], "Resumen");
+
+  // 1) Equipos (con estado de operatividad y nº de pendientes derivados)
   addSheet(state.equipos.map(e=>({
     ID:e.idPlanilla, "N° Carpeta":e.carpeta, "N° Inventario":e.inventario, Equipo:e.equipo, Servicio:e.servicio,
     Unidad:e.unidad, Ubicación:e.ubicacion, Procedencia:e.procedencia, Marca:e.marca, Modelo:e.modelo, "N° Serie":e.serie,
     "Año Instalación":e.anio, "Vida Útil Residual":e.vidaUtil, Clasificación:e.clasif, Familia:e.fam, Frecuencia:e.frecuencia,
-    Estado:estadoEquipo(e.key), "Pendientes abiertos": pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length, Fila:e.fila
+    Estado:estadoEquipo(e.key), "Pendientes abiertos": pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length
   })), "Equipos");
 
-  // Mantenciones (detalleMP)
-  addSheet(state.detalleMP.map(mpRowForExport), "Mantenciones");
+  // 2) Bitácora unificada (registro cronológico de actividad)
+  addSheet(buildBitacora(), "Bitácora");
 
-  // Pendientes (+ seguimiento resumido en una columna)
+  // 3) Pendientes (con estado, compromiso, seguimiento y tareas)
   addSheet(state.pendientes.map(p=>{ const r=pendRowForExport(p);
     r.EnEsperaDe=p.enEsperaDe||""; r.Prioridad=p.prioridad||""; r.Causal=p.causal||"";
     r.Tareas=(p.tareas||[]).map(t=>(t.hecha?"✓ ":"☐ ")+(t.texto||"")).join(" | ");
     r.Seguimiento=(p.seguimiento||[]).map(s=>`${(s.fecha||"").slice(0,10)}: ${s.texto}`).join(" || ");
     r.Creado=p.creado; r.Completado=p.fechaCompletado||""; return r; }), "Pendientes");
 
-  // Correctivos (expedientes)
-  addSheet(state.correctivos.map(corrRowForExport), "Correctivos");
+  // 4) Servicio Técnico — equipos actualmente en servicio técnico
+  const stRows=[];
+  for(const e of state.equipos){ if(estadoEquipo(e.key)!=="Servicio Técnico") continue;
+    const corr=corrByEquipo(e.key).filter(c=>c.estadoEvento!=="Cerrado");
+    const c0=corr[0]||{};
+    stRows.push({ "N° Inventario":e.inventario, Equipo:e.equipo, Servicio:e.servicio, "N° Serie":e.serie, Ubicación:e.ubicacion,
+      "Folio SIGEM":c0.folioSigem||"", Apertura:(c0.fechaDocumento||"").slice(0,10), Técnico:c0.tecnico||"",
+      Empresa:((c0.avances||[]).find(a=>a.empresa)||{}).empresa||"",
+      "Pendientes abiertos":pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length }); }
+  addSheet(stRows, "Servicio Técnico");
 
-  // Avances de correctivos (uno por fila, vinculado al folio)
+  // 5) No Operativos — equipos detenidos, con folio/motivo
+  const noRows=[];
+  for(const e of state.equipos){ if(estadoEquipo(e.key)!=="No Operativo") continue;
+    const corr=corrByEquipo(e.key).filter(c=>c.estadoEvento!=="Cerrado");
+    const pend=pendByEquipo(e.key).filter(p=>p.estado!=="Completado");
+    noRows.push({ "N° Inventario":e.inventario, Equipo:e.equipo, Servicio:e.servicio, "N° Serie":e.serie, Ubicación:e.ubicacion,
+      "Folio correctivo":(corr[0]||{}).folioSigem||"", "Pendientes abiertos":pend.length,
+      "Motivo / último pendiente":(pend[0]||{}).descripcion||((corr[0]||{}).folioSigem?("Correctivo "+corr[0].folioSigem):"") }); }
+  addSheet(noRows, "No Operativos");
+
+  // 6) Detalle de respaldo: Mantenciones, Correctivos, Avances y Resumen mes×código
+  addSheet(state.detalleMP.map(mpRowForExport), "Mantenciones");
+  addSheet(state.correctivos.map(corrRowForExport), "Correctivos");
   const avances=[];
   for(const c of state.correctivos){ const e=equipoByKey(c.equipoKey)||{};
     for(const a of (c.avances||[])) avances.push({ Folio:c.folioSigem, Inventario:e.inventario||"", Equipo:e.equipo||"",
       Fecha:(a.fecha||"").slice(0,10), Tipo:a.tipo, "N°":a.numero||"", Empresa:a.empresa||"", Responsable:a.responsable||"", Detalle:a.detalle||"" }); }
   addSheet(avances, "Avances correctivos");
-
-  // Resumen mes × código
   const { cols, matrix }=resumenMesCodigo();
   addSheet(matrix.map((r,m)=>{ const o={Mes:MESES_LARGO[m]}; cols.forEach(c=>o[c]=r.counts[c]); return o; }), "Resumen mes×código");
   return wb;
 }
-function exportAllXLSX(){
-  XLSX.writeFile(buildWorkbook(), `respaldo-MP2026-${todayISO()}.xlsx`);
-  toast("Respaldo Excel exportado.");
+function exportAllXLSX(exp){
+  exp = exp || nuevoExportId();
+  XLSX.writeFile(buildWorkbook(exp), `GEC-HHHA-${exp.id}.xlsx`);
+  toast("Exportación Excel · "+exp.id);
 }
 
 async function chooseBackupFolder(){
@@ -2638,14 +2724,15 @@ async function chooseBackupFolder(){
 async function saveToFolder(){
   if(!backupDirHandle) return false;
   try{
-    // JSON reimportable
-    const payload={ tipo:"respaldo-gmp2026-v3", version:3, fecha:new Date().toISOString(), meta:state.meta,
-      detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros, usageLog, usoResumen:resumenUso(), entorno:entornoSesion(), prefs };
-    const fhJ=await backupDirHandle.getFileHandle(`respaldo-MP2026.json`,{create:true});
+    const exp=nuevoExportId();
+    // JSON reimportable (con ID de exportación)
+    const payload={ app:APP_NAME, tipo:"respaldo-gmp2026-v3", version:3, exportId:exp.id, exportSeq:exp.seq, fecha:exp.fecha, meta:state.meta,
+      detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros, prefs };
+    const fhJ=await backupDirHandle.getFileHandle(`GEC-HHHA.json`,{create:true});
     const wJ=await fhJ.createWritable(); await wJ.write(JSON.stringify(payload,null,2)); await wJ.close();
-    // Excel legible (mismo libro de "Respaldar ahora")
-    const buf=XLSX.write(buildWorkbook(),{type:"array",bookType:"xlsx"});
-    const fhX=await backupDirHandle.getFileHandle(`respaldo-MP2026.xlsx`,{create:true});
+    // Excel legible (mismo libro y mismo ID que "Respaldar ahora")
+    const buf=XLSX.write(buildWorkbook(exp),{type:"array",bookType:"xlsx"});
+    const fhX=await backupDirHandle.getFileHandle(`GEC-HHHA.xlsx`,{create:true});
     const wX=await fhX.createWritable(); await wX.write(buf); await wX.close();
     dirtySinceBackup=false; changesSinceFolderSave=0;
     return true;
@@ -2728,14 +2815,10 @@ function openMenu(){
   body.appendChild(item("Importar respaldo anterior","Migra datos de la app antigua (respaldo-gmp2026).",()=>{closeDrawer();openImportOld();}));
   body.appendChild(item("Importar planilla integrada (.xlsx)","Lee Sistema_Gestion_MP2026_Integrado: correctivos (fusión por folio) + pendientes (marcados como integrado).",()=>{closeDrawer();$("#fileIntegrado").click();}));
   body.appendChild(item("Importar consolidado (.xlsx)","Lee «Consolidado de mantenciones / pendientes registradas» (detecta el tipo por encabezados). Puedes elegir varios a la vez.",()=>{closeDrawer();$("#fileConsolidado").click();}));
-  body.appendChild(item("Exportar respaldo JSON","Descarga todos los datos de usuario (reimportable).",()=>{closeDrawer();exportJSON();}));
-  body.appendChild(item("Exportar todo a Excel","Libro .xlsx con equipos, mantenciones, pendientes, correctivos, avances y resumen.",()=>{closeDrawer();exportAllXLSX();}));
+  body.appendChild(item("Exportar respaldo JSON","Descarga todos los datos de usuario (reimportable). Cada exportación lleva un ID único.",()=>{closeDrawer();exportJSON();}));
+  body.appendChild(item("Exportar Excel compartible","Libro .xlsx autoexplicativo: Resumen (con ID de exportación e indicadores), Equipos, Bitácora, Pendientes, Servicio Técnico, No Operativos y detalle. Se puede trabajar sin la app.",()=>{closeDrawer();exportAllXLSX();}));
   body.appendChild(item("Importar respaldo JSON","Restaura desde un respaldo de esta app.",()=>{closeDrawer();$("#fileJson").click();}));
   body.appendChild(item("Elegir carpeta de auto-guardado","Respaldo automático de JSON + Excel a una carpeta, sin clics (también al cerrar la pestaña). Requiere Chrome/Edge.",()=>{closeDrawer();chooseBackupFolder();}));
-  body.appendChild(el("hr",{class:"soft"}));
-  body.appendChild(item((recording?"⏸ Pausar grabación de uso":"▶ Reanudar grabación de uso")+` (${usageLog.length} eventos)`,"Activa por defecto. Registra navegación, búsquedas, filtros, paneles y avisos con marca de tiempo; se incluye en el respaldo.",()=>{closeDrawer();toggleRecording();}));
-  body.appendChild(item("Descargar grabación de uso","Exporta la bitácora + resumen y entorno como JSON para compartir conmigo.",()=>{closeDrawer();downloadUsageLog();}));
-  body.appendChild(item("Borrar grabación de uso","Vacía la bitácora de uso registrada.",()=>{closeDrawer();clearUsageLog();}));
   body.appendChild(el("hr",{class:"soft"}));
   body.appendChild(item("Diagnóstico de datos","Detecta registros sin equipo en la planilla y pendientes posiblemente duplicados.",()=>{closeDrawer();openDiagnostico();}));
   body.appendChild(item("Reset total","Borra preferencias, planilla y datos de usuario.",()=>{closeDrawer();resetTotal();},"" ));
@@ -2788,7 +2871,7 @@ function cmdkActions(){
   acts.push({ icon:"⇪", title:"Importar respaldo anterior",  sub:"Migra datos de la app antigua",    run:openImportOld });
   acts.push({ icon:"⊞", title:"Importar planilla integrada", sub:"Sistema_Gestion_MP2026_Integrado", run:()=>$("#fileIntegrado").click() });
   acts.push({ icon:"≣", title:"Importar consolidado",        sub:"Uno o varios .xlsx",               run:()=>$("#fileConsolidado").click() });
-  acts.push({ icon:"⊟", title:"Exportar todo a Excel",       sub:"Libro con todas las colecciones",  run:exportAllXLSX });
+  acts.push({ icon:"⊟", title:"Exportar Excel compartible",  sub:"Resumen+Equipos+Bitácora+Pendientes+ST+No Op.",  run:exportAllXLSX });
   acts.push({ icon:"☾", title:"Cambiar tema claro/oscuro",   sub:"Apariencia",                       run:toggleTheme });
   acts.push({ icon:"▦", title:"Cambiar densidad",            sub:"Compacta / cómoda",                run:toggleDensity });
   acts.push({ icon:"⋯", title:"Más acciones…",               sub:"Abrir el menú completo",           run:openMenu });
@@ -2886,21 +2969,12 @@ function kbOpen(){ const rows = kbRows(); if(_kbIdx>=0 && rows[_kbIdx]) rows[_kb
 function wireUI(){
   $("#btnLoadXlsm").addEventListener("click",()=>$("#fileXlsm").click());
   $("#btnBackupNow").addEventListener("click",respaldarAhora);
-  $("#btnRec").addEventListener("click",toggleRecording);
   $("#btnMenu").addEventListener("click",openMenu);
   // Look & UX: aplica tema/densidad guardados (sincroniza iconos) y conecta toggles + paleta.
   applyTheme(getTheme()); applyDensity(getDensity());
   $("#btnCmd")?.addEventListener("click",openCmdk);
   $("#btnTheme")?.addEventListener("click",toggleTheme);
   $("#btnDensity")?.addEventListener("click",toggleDensity);
-  // Grabación de uso: registra clics en botones/accesos cuando está activa
-  document.addEventListener("click",(e)=>{
-    if(!recording) return;
-    const t=e.target.closest("button,a,.kpi,.heatcell,[data-rec]");
-    if(!t || t.id==="btnRec") return;
-    const label=(t.getAttribute("data-rec")||t.textContent||"").replace(/\s+/g," ").trim().slice(0,60);
-    recordEvent("click", label||t.tagName.toLowerCase());
-  },true);
   $("#drawerClose").addEventListener("click",closeDrawer);
   $("#drawerBack").addEventListener("click",closeDrawer);
   $("#fileXlsm").addEventListener("change",e=>{ const f=e.target.files[0]; if(f)importXlsm(f); e.target.value=""; });
@@ -2955,7 +3029,7 @@ async function resetSilencioso(){
   try{ localStorage.removeItem(LS_PREF); localStorage.removeItem(LS_DATOS); localStorage.removeItem(LS_USUARIO);}catch(e){}
   state={ equipos:[],registros:[],detalleMP:[],pendientes:[],correctivos:[],empresas:[],ingenieros:[],meta:null };
   prefs={ columnasEquipos:null, columnasHistorial:null, ultimoEjecutor:"", ultimoTipoMant:"Interno", ultimaEmpresa:"", ultimoIngeniero:"" };
-  usageLog=[]; dirtySinceBackup=false; invalidarIndices();
+  dirtySinceBackup=false; invalidarIndices();
 }
 (async function init(){
   wireUI();
@@ -2967,7 +3041,6 @@ async function resetSilencioso(){
   } else {
     await loadAll();
   }
-  recordEvent("session","▶ Apertura · "+entornoSesion().pantalla+" · equipos:"+state.equipos.length);
   render();
 })();
 </script>

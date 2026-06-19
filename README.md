@@ -1,7 +1,9 @@
-# Sistema de Gestión MP 2026 — Equipamiento Clínico HHHA
+# Gestión de equipos críticos HHHA
 
-Aplicación de **centro de control operacional** para la gestión del Mantenimiento
-Preventivo (MP), correctivo, pendientes y reprogramaciones de ~1.000 equipos clínicos.
+**Motor de trabajo** y **centro de control operacional** para la gestión del
+Mantenimiento Preventivo (MP), correctivo, **pendientes** y reprogramaciones de
+~1.000 equipos clínicos: no solo registra, también permite **gestionar** el día a día
+(operatividad, pendientes, servicio técnico) y **exportar** una estructura compartible.
 
 Reconstrucción desde cero de la app anterior: **misma lógica de negocio, interfaz
 mucho más simple y directa**. Un único archivo `index.html` (HTML + CSS + JavaScript
@@ -60,9 +62,14 @@ planilla se conservan igualmente.
   **texto** (conservan ceros a la izquierda). Datos sucios en celdas de mes → ignorados.
 - **Persistencia** IndexedDB + localStorage (3 claves: preferencias, planilla cruda,
   datos de usuario). **Reset total**.
-- **Respaldo doble**: «Respaldar ahora» genera el **JSON** reimportable *y* un libro
-  **Excel** (`.xlsx`) con una hoja por colección (equipos, mantenciones, pendientes,
-  correctivos, avances y resumen mes×código). También disponibles por separado en «Más».
+- **Exportación compartible con ID único**: «Respaldar ahora» genera el **JSON**
+  reimportable *y* un libro **Excel** (`.xlsx`) **autoexplicativo y usable sin la app**,
+  con hojas **Resumen** (ID único de exportación + indicadores de operatividad),
+  **Equipos** (con estado), **Bitácora** (registro cronológico de actividad),
+  **Pendientes** (con estado, compromiso y seguimiento), **Servicio Técnico**,
+  **No Operativos**, y el detalle (Mantenciones, Correctivos, Avances, Resumen mes×código).
+  **Cada exportación lleva un ID distinto** (`GEC-AAAAMMDD-HHMMSS-XXXX`) y un número de
+  versión incremental, para identificar inequívocamente cada versión compartida.
 - **Auto-guardado a carpeta** (File System Access API, Chrome/Edge): eliges una carpeta
   una vez y la app escribe ahí **JSON + Excel** de forma automática (cada cierto número
   de cambios y **al ocultar/cerrar la pestaña**), sin diálogos. Donde no hay soporte,
@@ -90,10 +97,15 @@ planilla se conservan igualmente.
   un clic) y `enEsperaDe`.
 - **Reprogramación**: ciclo C1/C5/C6/C7/C8 (generar → imprimir → 2 firmas → oficializar).
 - **Resumen mes × código** con conteos y *drill-down* a la vista de Equipos.
-- **Grabación de uso** (activa por defecto; botón para pausar): registra navegación,
-  búsquedas, filtros, paneles, aperturas de ficha, clics y avisos/errores con marca de
-  tiempo, más entorno (pantalla, navegador) y un resumen. Se incluye en el respaldo y
-  se puede descargar/borrar desde «Más» — pensada para analizar el uso y proponer mejoras.
+- **Indicadores de operatividad** en el Tablero: panel «Operatividad de la flota» con
+  conteo de **Operativos**, **En servicio técnico** y **No operativos** (con LED de
+  estado), cada uno clicable para filtrar la vista de Equipos por ese estado.
+- **Gestión de pendientes** como eje del trabajo: panel de indicadores (abiertos,
+  vencidos, en espera de terceros, completados), creación/edición, **completar** y
+  **reabrir**, bitácora `seguimiento[]`, `enEsperaDe` y filtros por estado/tipo/origen.
+
+> La antigua **«grabación de uso»** fue **eliminada**: la app ya no registra ni
+> exporta telemetría de navegación.
 - **Diseño responsivo**: la ficha de equipo y las tablas se adaptan al ancho de la
   pantalla, sin scroll horizontal.
 - **Sistema visual «Consola clínica»**: consola de operaciones biomédicas con base
