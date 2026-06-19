@@ -1328,8 +1328,9 @@ function renderNav(){
     nav.appendChild(b);
   }
   nav.appendChild(el("div",{class:"navsep"}));
-  nav.appendChild(el("button",{onclick:openImportOld}, el("span",{class:"ico"},"⇪"), el("span",{},"Importar respaldo anterior")));
-  nav.appendChild(el("button",{onclick:()=>$("#fileIntegrado").click()}, el("span",{class:"ico"},"⊞"), el("span",{},"Importar planilla integrada")));
+  // Acción diaria: cargar el respaldo del día (las importaciones ocasionales —
+  // respaldo anterior, planilla integrada, consolidado— viven en «Más ▾»).
+  nav.appendChild(el("button",{onclick:()=>$("#fileJson").click(), title:"Carga el respaldo del día (JSON) exportado por esta app"}, el("span",{class:"ico"},"⤓"), el("span",{},"Cargar respaldo (JSON)")));
   if(state.meta){
     nav.appendChild(el("div",{class:"navhint"}, `Planilla: ${esc(state.meta.archivo||"")}`));
     nav.appendChild(el("div",{class:"navhint"}, `${state.equipos.length} equipos · cargada ${fmtDate(state.meta.fechaCarga)}`));
@@ -2625,6 +2626,19 @@ function exportJSON(exp){
 // "Respaldar ahora": genera el respaldo reimportable (JSON) y la estructura legible
 // (Excel) con el MISMO ID de exportación.
 function respaldarAhora(){ const exp=nuevoExportId(); exportJSON(exp); exportAllXLSX(exp); }
+
+// Descarga de seguridad (mejor esfuerzo) al cerrar/recargar si hay cambios sin
+// respaldar y no hay carpeta de auto-guardado: vuelca un JSON reimportable para no
+// perder el trabajo. Los navegadores no siempre permiten descargas al cerrar; la
+// vía 100% fiable sigue siendo «Elegir carpeta de auto-guardado».
+function safetyDump(){
+  try{
+    const exp=nuevoExportId();
+    const payload={ app:APP_NAME, tipo:"respaldo-gmp2026-v3", version:3, exportId:exp.id, exportSeq:exp.seq, fecha:exp.fecha, meta:state.meta,
+      detalleMP:state.detalleMP, pendientes:state.pendientes, correctivos:state.correctivos, empresas:state.empresas, ingenieros:state.ingenieros, prefs };
+    download(`GEC-HHHA-seguridad-${exp.id}.json`, JSON.stringify(payload));
+  }catch(e){}
+}
 async function importJSON(file){
   try{
     const data=JSON.parse(await file.text());
@@ -3047,11 +3061,16 @@ function wireUI(){
     if(!typing && (e.key==="j"||e.key==="k")){ e.preventDefault(); kbMove(e.key==="j"?1:-1); return; }
     if(!typing && e.key==="Enter"){ const rows=kbRows(); if(_kbIdx>=0 && rows[_kbIdx]){ e.preventDefault(); kbOpen(); } }
   });
-  // Al ocultar/cerrar la pestaña: si hay carpeta de auto-guardado, escribir JSON+Excel (mejor esfuerzo);
-  // este evento es más fiable que beforeunload para operaciones asíncronas.
+  // Al ocultar la pestaña: si hay carpeta de auto-guardado, escribir JSON+Excel
+  // (más fiable que beforeunload para operaciones asíncronas).
   document.addEventListener("visibilitychange",()=>{ if(document.visibilityState==="hidden"){ persistUsuario(); if(backupDirHandle && dirtySinceBackup) saveToFolder(); } });
-  window.addEventListener("pagehide",()=>{ persistUsuario(); if(backupDirHandle && dirtySinceBackup) saveToFolder(); });
-  // Aviso al cerrar SOLO si hay cambios y no hay auto-guardado a carpeta activo.
+  // Al cerrar/recargar/navegar (no en simples cambios de pestaña): guardar a carpeta si
+  // la hay; si no, descargar un respaldo de SEGURIDAD para no perder el trabajo.
+  window.addEventListener("pagehide",()=>{
+    persistUsuario();
+    if(dirtySinceBackup){ if(backupDirHandle) saveToFolder(); else safetyDump(); }
+  });
+  // Aviso al cerrar si hay cambios sin respaldar y no hay auto-guardado a carpeta.
   window.addEventListener("beforeunload",e=>{ if(dirtySinceBackup && !backupDirHandle){ e.preventDefault(); e.returnValue=""; } });
 }
 

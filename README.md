@@ -45,10 +45,15 @@ La app **parte siempre sin datos**. Cada día, en la pantalla **«Comenzar el d�
 
 ### Migrar datos de la app anterior
 
-**«Importar respaldo anterior»** (en el menú lateral o en «Más») lee un respaldo
-de la app antigua (`tipo: "respaldo-gmp2026"`) y migra mantenciones, pendientes y
-correctivos a la estructura nueva. Equipos y registros **no** se importan: se
-re-leen del `.xlsm` oficial. Archivo de prueba: `sample-data/ejemplo_respaldo_anterior.json`.
+**«Importar respaldo anterior»** (en **«Más ▾»**; es una **migración de una sola vez**,
+por eso no ocupa sitio en el panel lateral) lee un respaldo de la app antigua
+(`tipo: "respaldo-gmp2026"`) y migra mantenciones, pendientes y correctivos a la
+estructura nueva. Equipos y registros **no** se importan: se re-leen del `.xlsm`
+oficial. Archivo de prueba: `sample-data/ejemplo_respaldo_anterior.json`.
+
+> El **panel lateral** solo lleva las vistas del día y la acción diaria
+> **«Cargar respaldo (JSON)»**. Las importaciones ocasionales (respaldo anterior,
+> planilla integrada, consolidado) están en **«Más ▾»**.
 
 **«Importar planilla integrada»** lee `Sistema_Gestion_MP2026_Integrado.xlsx`: los
 expedientes **correctivos** detallados (OT + envíos + visitas + línea de compra +
@@ -84,9 +89,12 @@ planilla se conservan igualmente.
   versión incremental, para identificar inequívocamente cada versión compartida.
 - **Auto-guardado a carpeta** (File System Access API, Chrome/Edge): eliges una carpeta
   una vez y la app escribe ahí **JSON + Excel** de forma automática (cada cierto número
-  de cambios y **al ocultar/cerrar la pestaña**), sin diálogos. Donde no hay soporte,
-  al cerrar se muestra el **aviso** de respaldo (los navegadores no permiten descargar
-  de forma fiable al cerrar; por eso es aviso, no descarga forzada).
+  de cambios y **al ocultar/cerrar la pestaña**), sin diálogos. Es la vía **100% fiable**.
+- **Protección al cerrar el navegador**: si hay cambios sin respaldar, al cerrar/recargar
+  se muestra una **advertencia** del navegador y, si no hay carpeta de auto-guardado, se
+  **descarga un respaldo de seguridad** `GEC-HHHA-seguridad-<ID>.json` (mejor esfuerzo:
+  algunos navegadores limitan las descargas al cerrar; para garantía total usa la carpeta
+  de auto-guardado). El respaldo de seguridad es reimportable como cualquier otro.
 - **Tablero / centro de control**: banda de KPIs reactivos, tablero de operatividad
   y panel «Por volcar al `.xlsm`» (celda exacta hoja/fila/columna, copiar/exportar).
 - **Equipos**: tabla densa (~1.000 filas, sin virtualización), búsqueda global con
