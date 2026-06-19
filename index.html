@@ -542,7 +542,7 @@ let state = {
   // El .xlsm es solo una instantánea del preventivo; el estado vivo lo fija la app.
   eventosEstado: []
 };
-let prefs = { columnasEquipos: null, ultimoEjecutor:"", ultimoTipoMant:"Interno", ultimaEmpresa:"", ultimoIngeniero:"" };
+let prefs = { columnasEquipos: null, ultimoEjecutor:"", ultimoTipoMant:"Interno", ultimaEmpresa:"", ultimoIngeniero:"", diasSinSeg:7 };
 let ui = {
   view: "tablero",
   search: "",
@@ -1176,6 +1176,33 @@ function fmtDateTime(iso){ if(!iso) return "—"; const s=String(iso);
   if(s.includes("T")){ const d=new Date(s); if(!isNaN(d)) return `${fmtDate(s)} ${String(d.getHours()).padStart(2,"0")}:${String(d.getMinutes()).padStart(2,"0")}`; }
   return fmtDate(s); }
 
+// ===== «Sin seguimiento»: detectar lo que quedó sin atención =====
+// Estados que requieren seguimiento (no operativos y no dados de baja).
+const ESTADOS_ATENCION = ["No Operativo","Servicio Técnico","No Ubicable","Préstamo"];
+function diasDesde(iso){ if(!iso) return null; const s=String(iso); const d=new Date(s.length<=10? s+"T00:00:00" : s); if(isNaN(d)) return null; return Math.floor((Date.now()-d.getTime())/86400000); }
+function diasSinActividad(key){ return diasDesde(ultActividad(key)); }
+function diasSinSegPref(){ return prefs.diasSinSeg||7; }
+// Equipos detenidos (estado de atención) sin actividad registrada hace ≥ dias (o nunca).
+function equiposSinSeguimiento(dias){
+  dias = dias||diasSinSegPref();
+  return state.equipos
+    .filter(e=> ESTADOS_ATENCION.includes(estadoEquipo(e.key)))
+    .map(e=>({ e, dias:diasSinActividad(e.key) }))
+    .filter(x=> x.dias==null || x.dias>=dias)
+    .sort((a,b)=> (b.dias==null?1e9:b.dias)-(a.dias==null?1e9:a.dias));
+}
+// Pendientes abiertos sin seguimiento (último seguimiento / reporte) hace ≥ dias.
+function pendSinSeguimiento(dias){
+  dias = dias||diasSinSegPref();
+  return state.pendientes.filter(p=>{
+    if(p.estado==="Completado") return false;
+    const segs=p.seguimiento||[];
+    const last = (segs.length? segs[segs.length-1].fecha : null) || p.fechaReporte || p.creado;
+    const d=diasDesde(last);
+    return d==null || d>=dias;
+  });
+}
+
 function estadoEquipo(key){
   // 1) Fuente de verdad: el estado fijado en la app (el evento más reciente manda).
   const evManual=ultimoEventoEstado(key);
@@ -1469,6 +1496,8 @@ function viewTablero(){
   kpis.appendChild(kpi("MP vencidas", String(vencidas), "meses pasados sin registro", vencidas?"alert":"ok", ()=>{ui.view="preventivo";render();}));
   kpis.appendChild(kpi("Pendientes", String(pendAbiertos.length), `${pendVenc} vencidos`, pendVenc?"alert":"warn", ()=>{ui.view="pendientes";render();}));
   kpis.appendChild(kpi("Equipos detenidos", String(detenidos), `${enST.length} en servicio técnico`, detenidos?"alert":"ok", ()=>{ui.view="tablero";render();}));
+  const _sinSeg=equiposSinSeguimiento();
+  kpis.appendChild(kpi("Sin seguimiento", String(_sinSeg.length), `detenidos sin actualizar ≥${diasSinSegPref()}d`, _sinSeg.length?"alert":"ok", ()=>goEquipos({sinSeg:true})));
   kpis.appendChild(kpi("Reprog. por firmar", String(firmar), "esperan 2 firmas", firmar?"warn":"ok", ()=>{ui.view="reprogramacion";render();}));
   wrap.appendChild(kpis);
 
@@ -1488,6 +1517,33 @@ function viewTablero(){
   if(otros) band.appendChild(cell("Préstamo / NU / baja",otros,"var(--led-idle)",""));
   estadoBand.appendChild(band);
   wrap.appendChild(estadoBand);
+
+  // Sin seguimiento: equipos detenidos sin actualizar hace ≥ N días (lo que quedó sin atención)
+  const _dias=diasSinSegPref();
+  const ss=equiposSinSeguimiento(_dias);
+  const ssCard=el("div",{class:"card"});
+  const ssHd=el("h3",{}, "Sin seguimiento ", el("span",{class:"count"},`(${ss.length})`), el("span",{class:"spacer",style:"flex:1"}),
+    el("span",{class:"faint small",style:"font-weight:500;margin-right:6px"},"Detenidos sin actualizar"));
+  const ssSel=el("select",{style:"font-size:12px;padding:3px 7px;width:auto",onchange:async e=>{ prefs.diasSinSeg=parseInt(e.target.value,10); await persistPrefs(); render(); }});
+  [3,7,15,30,60].forEach(n=>{ const o=el("option",{value:n}, "≥ "+n+" días"); if(n===_dias)o.selected=true; ssSel.appendChild(o); });
+  ssHd.appendChild(ssSel); ssCard.appendChild(ssHd);
+  if(!ss.length) ssCard.appendChild(el("div",{class:"small muted"},`Nada pendiente de seguimiento (equipos detenidos sin actualizar hace ${_dias}+ días). ✓`));
+  else {
+    const tw=el("div",{class:"tablewrap dense"}); const t=el("table",{class:"grid"});
+    t.appendChild(el("thead",{},el("tr",{},...["Equipo","Estado","Sin actualizar","Último motivo",""].map(h=>el("th",{},h)))));
+    const tb=el("tbody",{});
+    for(const {e,dias} of ss.slice(0,12)){ const ev=ultimoEventoEstado(e.key);
+      tb.appendChild(el("tr",{class:"clickable",onclick:()=>openFicha(e.key)},
+        el("td",{}, esc(e.equipo||""), el("div",{class:"faint mono"}, e.inventario||"")),
+        el("td",{}, badgeEstado(estadoEquipo(e.key))),
+        el("td",{}, el("span",{class:"badge "+(dias==null||dias>=30?"b-bad":"b-warn")}, dias==null?"sin registro":dias+" días")),
+        el("td",{class:"small"}, esc((ev&&(ev.motivo||ev.nota))||"—")),
+        el("td",{}, el("button",{class:"btn sm",onclick:(x)=>{x.stopPropagation();openEstadoForm(e.key,false);}},"Actualizar"))));
+    }
+    t.appendChild(tb); tw.appendChild(t); ssCard.appendChild(tw);
+    if(ss.length>12) ssCard.appendChild(el("div",{class:"small muted",style:"margin-top:6px"}, el("span",{class:"link",onclick:()=>goEquipos({sinSeg:true})}, `Ver los ${ss.length} en Equipos →`)));
+  }
+  wrap.appendChild(ssCard);
 
   const cols=el("div",{class:"grid2"});
 
@@ -1609,6 +1665,7 @@ function filteredEquipos(){
   if(qk.familia) rows=rows.filter(e=>e.fam===qk.familia);
   if(qk.servicio) rows=rows.filter(e=>e.servicio===qk.servicio);
   if(qk.estado) rows=rows.filter(e=>estadoEquipo(e.key)===qk.estado);
+  if(qk.sinSeg){ const n=diasSinSegPref(); rows=rows.filter(e=>{ if(!ESTADOS_ATENCION.includes(estadoEquipo(e.key))) return false; const d=diasSinActividad(e.key); return d==null||d>=n; }); }
   if(qk.mes!==""){ const m=parseInt(qk.mes,10); rows=rows.filter(e=> e.prog[m] || resultadoMes(e.key,m).resultado); }
   if(qk.codigo!=null && qk.mes!==""){ const m=parseInt(qk.mes,10); rows=rows.filter(e=> matchMesCodigo(e,m,qk.codigo)); }
   // header filters
@@ -1664,7 +1721,9 @@ function viewEquipos(){
   // active chips
   for(const [k,v] of Object.entries(ui.quick)){
     if(!v && v!==0) continue; if(k==="codigo") continue;
-    const lbl = k==="mes"? "Mes: "+MESES[parseInt(v)] : `${k}: ${v}`+(k==="mes"&&ui.quick.codigo?` · ${ui.quick.codigo}`:"");
+    const lbl = k==="sinSeg" ? `Sin seguimiento ≥${diasSinSegPref()}d`
+              : k==="mes" ? "Mes: "+MESES[parseInt(v)]
+              : `${k}: ${v}`+(k==="mes"&&ui.quick.codigo?` · ${ui.quick.codigo}`:"");
     fb.appendChild(el("span",{class:"chip-x"}, lbl, el("button",{onclick:()=>{ ui.quick[k]=k==="mes"?"":""; if(k==="mes")ui.quick.codigo=null; render(); }},"✕")));
   }
   const hfActive=Object.entries(ui.headerFilters).filter(([f,s])=>s&&s.size);
@@ -1696,7 +1755,10 @@ function viewEquipos(){
       if(c.f==="_estado") tr.appendChild(el("td",{}, el("span",{style:"cursor:pointer",title:"Cambiar estado del equipo",onclick:(ev)=>{ev.stopPropagation();openEstadoForm(e.key,false);}}, badgeEstado(estadoEquipo(e.key)))));
       else if(c.f==="_pend"){ const n=pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length;
         tr.appendChild(el("td",{}, n?el("span",{class:"badge "+(pendByEquipo(e.key).some(pendienteVencido)?"b-bad":"b-warn"),style:"cursor:pointer",title:"Ver pendientes de este equipo",onclick:(ev)=>{ev.stopPropagation();goPendientes(e.key);}}, n+" pend."):"")); }
-      else if(c.f==="_ultact"){ const u=ultActividad(e.key); tr.appendChild(el("td",{class:"small faint nowrap"}, u?fmtDateTime(u):"—")); }
+      else if(c.f==="_ultact"){ const u=ultActividad(e.key); const d=diasSinActividad(e.key);
+        const stale = ESTADOS_ATENCION.includes(estadoEquipo(e.key)) && (d==null || d>=diasSinSegPref());
+        tr.appendChild(el("td",{class:"small nowrap"+(stale?"":" faint"), title: stale?`Detenido sin actualizar ${d==null?"(sin registro)":d+" días"}`:""},
+          u?fmtDateTime(u):"—", stale?el("span",{class:"badge b-bad",style:"margin-left:6px"}, d==null?"!":d+"d"):null)); }
       else tr.appendChild(el("td",{class:c.mono?"mono":""}, esc(e[c.f]||"")));
     }
     tb.appendChild(tr);
@@ -2345,16 +2407,19 @@ function viewPendientes(){
   const _compl=state.pendientes.filter(p=>p.estado==="Completado").length;
   const pk=el("div",{class:"kpis"});
   const pkpi=(label,val,sub,cls,act)=> el("div",{class:"kpi "+(cls||""),onclick:act}, el("div",{class:"k-label"},label), el("div",{class:"k-val"},String(val)), sub?el("div",{class:"k-sub"},sub):null);
-  pk.appendChild(pkpi("Abiertos",_abiertos.length,"por gestionar",_abiertos.length?"warn":"ok",()=>{ ui.pendEstado="Abierto"; render(); }));
-  pk.appendChild(pkpi("Vencidos",_venc,"pasada la fecha de compromiso",_venc?"alert":"ok",()=>{ ui.pendEstado="Abierto"; render(); }));
-  pk.appendChild(pkpi("En espera de terceros",_espera,"con «en espera de»","",()=>{ ui.pendEstado="Abierto"; render(); }));
-  pk.appendChild(pkpi("Completados",_compl,"histórico","ok",()=>{ ui.pendEstado="Completado"; render(); }));
+  pk.appendChild(pkpi("Abiertos",_abiertos.length,"por gestionar",_abiertos.length?"warn":"ok",()=>{ ui.pendEstado="Abierto"; ui.pendSinSeg=false; render(); }));
+  pk.appendChild(pkpi("Vencidos",_venc,"pasada la fecha de compromiso",_venc?"alert":"ok",()=>{ ui.pendEstado="Abierto"; ui.pendSinSeg=false; render(); }));
+  pk.appendChild(pkpi("En espera de terceros",_espera,"con «en espera de»","",()=>{ ui.pendEstado="Abierto"; ui.pendSinSeg=false; render(); }));
+  const _sinSegP=pendSinSeguimiento().length;
+  pk.appendChild(pkpi("Sin seguimiento",_sinSegP,`sin avance ≥${diasSinSegPref()}d`,_sinSegP?"alert":"ok",()=>{ ui.pendEstado="Abierto"; ui.pendSinSeg=true; render(); }));
+  pk.appendChild(pkpi("Completados",_compl,"histórico","ok",()=>{ ui.pendEstado="Completado"; ui.pendSinSeg=false; render(); }));
   wrap.appendChild(pk);
 
   // filtros
   const fb=el("div",{class:"filterbar"});
   if(ui.pendEquipo){ const e=equipoByKey(ui.pendEquipo);
     fb.appendChild(el("span",{class:"chip-x"}, `Equipo: ${e?e.inventario:ui.pendEquipo}`, el("button",{onclick:()=>{ ui.pendEquipo=""; render(); }},"✕"))); }
+  if(ui.pendSinSeg){ fb.appendChild(el("span",{class:"chip-x"}, `Sin seguimiento ≥${diasSinSegPref()}d`, el("button",{onclick:()=>{ ui.pendSinSeg=false; render(); }},"✕"))); }
   const estSel=el("select",{onchange:e=>{ ui.pendEstado=e.target.value; render(); }});
   [["","Estado: todos"],["Abierto","Abiertos"],["Completado","Completados"]].forEach(([v,t])=>{ const o=el("option",{value:v},t); if((ui.pendEstado||"")===v)o.selected=true; estSel.appendChild(o); });
   fb.appendChild(estSel);
@@ -2373,6 +2438,7 @@ function viewPendientes(){
 
   let list=state.pendientes.slice();
   if(ui.pendEstado) list=list.filter(p=> ui.pendEstado==="Abierto"? p.estado!=="Completado": p.estado==="Completado");
+  if(ui.pendSinSeg){ const set=new Set(pendSinSeguimiento().map(p=>p.id)); list=list.filter(p=>set.has(p.id)); }
   if(ui.pendTipo) list=list.filter(p=>p.tipo===ui.pendTipo);
   if(ui.pendFuente) list=list.filter(p=>(p.fuente||"app")===ui.pendFuente);
   if(ui.pendEquipo) list=list.filter(p=>p.equipoKey===ui.pendEquipo);
@@ -2835,7 +2901,8 @@ function buildWorkbook(exp){
     "Año Instalación":e.anio, "Vida Útil Residual":e.vidaUtil, Clasificación:e.clasif, Familia:e.fam, Frecuencia:e.frecuencia,
     Estado:estadoEquipo(e.key), "Estado fijado en app": ultimoEventoEstado(e.key)?"Sí":"No (derivado)",
     "Pendientes abiertos": pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length,
-    "Última actualización": ultActividad(e.key)||""
+    "Última actualización": ultActividad(e.key)||"",
+    "Días sin actualizar": (()=>{ const d=diasSinActividad(e.key); return d==null?"":d; })()
   })), "Equipos");
 
   // 2) Bitácora unificada (registro cronológico de actividad)
@@ -2868,6 +2935,13 @@ function buildWorkbook(exp){
       "Folio correctivo":(corr[0]||{}).folioSigem||"", "Pendientes abiertos":pend.length,
       "Motivo / último pendiente":(pend[0]||{}).descripcion||((corr[0]||{}).folioSigem?("Correctivo "+corr[0].folioSigem):"") }); }
   addSheet(noRows, "No Operativos");
+
+  // Sin seguimiento — equipos detenidos sin actualizar hace ≥ N días (lo que quedó sin atención)
+  addSheet(equiposSinSeguimiento().map(({e,dias})=>{ const ev=ultimoEventoEstado(e.key);
+    return { "N° Inventario":e.inventario, Equipo:e.equipo, Servicio:e.servicio, Estado:estadoEquipo(e.key),
+      "Días sin actualizar": dias==null?"sin registro":dias, "Última actualización": ultActividad(e.key)||"",
+      "Último motivo": (ev&&(ev.motivo||ev.nota))||"", "Pendientes abiertos": pendByEquipo(e.key).filter(p=>p.estado!=="Completado").length };
+  }), "Sin seguimiento");
 
   // 6) Detalle de respaldo: Mantenciones, Correctivos, Avances y Resumen mes×código
   addSheet(state.detalleMP.map(mpRowForExport), "Mantenciones");

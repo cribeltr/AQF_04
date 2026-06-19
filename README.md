@@ -162,6 +162,11 @@ Borrador nace y se promueve a Oficial al recargar · cumplimiento solo cuenta `S
   MP, pendientes (y su seguimiento) y correctivos, filtrable por tipo (incluye «Estado»).
 - **Última actualización**: columna en Equipos y dato en la ficha con lo más reciente
   registrado sobre el equipo; panel **«Actividad reciente»** en el Tablero.
+- **«Sin seguimiento»** (lo que quedó sin atención): detecta equipos **detenidos**
+  (No Operativo / Servicio Técnico / No Ubicable / Préstamo) **sin actualizar hace ≥ N
+  días** (N configurable: 3/7/15/30/60). Aparece como KPI y tarjeta en el Tablero (con
+  acción «Actualizar»), filtro y resalte en Equipos, KPI en Pendientes (abiertos sin
+  avance), y hoja **«Sin seguimiento»** + columna «Días sin actualizar» en la exportación.
 - **Exportación**: la hoja **Bitácora** incluye los cambios de estado; **Equipos** añade
   «Estado fijado en app» y «Última actualización». Los indicadores de operatividad y las
   hojas «Servicio Técnico» / «No Operativos» reflejan el estado real gestionado en la app.
