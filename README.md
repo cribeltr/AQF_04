@@ -27,9 +27,10 @@ offline tras la primera carga.
 > si hay un solo resultado · la búsqueda filtra in situ en Equipos, Pendientes,
 > Correctivos y Preventivo (desde otras vistas salta a Equipos).
 
-> **Apariencia:** sistema visual **«Consola compacta»** (alta densidad, acento
-> verde operativo). Botones en la barra superior para **tema claro/oscuro** (`☾`)
-> y **densidad compacta/cómoda** (`▤`); ambas preferencias se recuerdan.
+> **Apariencia:** sistema visual **«Consola clínica»** (base slate fría, acento
+> cobalto, tipografía IBM Plex, LEDs de operatividad). Botones en la barra superior
+> para **tema claro/oscuro** (`☾`) y **densidad cómoda/compacta** (`▦`); ambas
+> preferencias se recuerdan (por defecto: claro y cómoda).
 
 ### Migrar datos de la app anterior
 
@@ -95,12 +96,12 @@ planilla se conservan igualmente.
   se puede descargar/borrar desde «Más» — pensada para analizar el uso y proponer mejoras.
 - **Diseño responsivo**: la ficha de equipo y las tablas se adaptan al ancho de la
   pantalla, sin scroll horizontal.
-- **Sistema visual «Consola compacta»**: interfaz de alta densidad con acento verde
-  operativo, **tema claro/oscuro** y **densidad compacta/cómoda** conmutables (se
-  recuerdan), **paleta de comandos `⌘K`** (equipos + acciones) y **navegación por
-  teclado `j`/`k`** en las tablas. Es solo apariencia y atajos: la lógica de negocio
-  y los datos no cambian. El look de referencia se conserva en
-  `design-ref/SIGEM_V2_diseno-referencia.html`.
+- **Sistema visual «Consola clínica»**: consola de operaciones biomédicas con base
+  slate fría, acento cobalto, tipografía IBM Plex, paleta de estado estricta y LEDs
+  de operatividad. Incluye **tema claro/oscuro** y **densidad cómoda/compacta**
+  conmutables (se recuerdan), **paleta de comandos `⌘K`** (equipos + acciones) y
+  **navegación por teclado `j`/`k`** en las tablas. Es solo apariencia y atajos: la
+  lógica de negocio y los datos no cambian.
 
 ## Lógica de negocio
 
