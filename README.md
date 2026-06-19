@@ -10,18 +10,27 @@ mucho más simple y directa**. Un único archivo `index.html` (HTML + CSS + Java
 *vanilla* + [SheetJS](https://sheetjs.com/) vía CDN). Sin paso de build. Funciona
 offline tras la primera carga.
 
-## Cómo usar
+## Cómo usar — rutina diaria
+
+La app **parte siempre sin datos**. Cada día, en la pantalla **«Comenzar el día»**:
 
 1. Abre **`index.html`** en un navegador moderno (Chrome/Edge recomendado para el
    auto-guardado a carpeta). Funciona también como archivo local (`file://`).
-2. Pulsa **«Cargar .xlsm»** y selecciona `ProgramaciónMP2026.xlsm`
-   (incluido en `sample-data/`). La app **solo lee** la planilla, nunca la escribe.
-3. Trabaja desde el **Tablero**: KPIs, equipos que necesitan atención y el panel
-   «Por volcar al .xlsm».
+2. **Paso 1 — Cargar programación (.xlsm):** selecciona `ProgramaciónMP2026.xlsm`
+   (incluido en `sample-data/`). Es el maestro de equipos; la app **solo lee** la
+   planilla, nunca la escribe.
+3. **Paso 2 — Cargar respaldo del día (JSON):** selecciona el respaldo exportado el
+   día anterior (trae mantenciones, pendientes y correctivos). El primer día aún no
+   hay respaldo: empiezas a registrar y exportas al terminar.
+4. Trabaja desde el **Tablero** (operatividad, KPIs, pendientes…). **Al terminar el
+   día, exporta** con **«Respaldar ahora»** (JSON + Excel con ID único) para volver a
+   cargarlo mañana. Si configuras una **carpeta de auto-guardado**, esto es automático.
 
-> **Empezar de cero:** la app guarda tu trabajo en el navegador y lo restaura al
-> abrir. Para arrancar **sin datos**, usa **«Más» → «Reset total»**, o abre
-> directamente **`index.html#reset`** (inicia limpio y vuelve a cargar el `.xlsm`).
+> **Sin restauración automática:** los datos viven en los archivos (programación +
+> respaldo), no en el navegador; por eso se cargan a diario. Solo se recuerdan las
+> **preferencias** (tema, densidad, columnas). Si por error recargas la pestaña con
+> trabajo sin exportar, la pantalla de inicio ofrece **«Recuperar esa sesión»** como
+> red de seguridad. Para limpiar todo: **«Más» → «Reset total»** o `index.html#reset`.
 
 > **Atajos:** `⌘K` / `Ctrl+K` abre la **paleta de comandos** (busca equipos y
 > ejecuta acciones) · `/` enfoca la búsqueda · `j` / `k` mueven el foco por la
@@ -60,8 +69,11 @@ planilla se conservan igualmente.
   datos desde la fila 8, identificación de columnas por encabezado, exclusión de
   `Q`/`S`, columnas auxiliares tras `AR` ignoradas, N° Inventario y Serie como
   **texto** (conservan ceros a la izquierda). Datos sucios en celdas de mes → ignorados.
-- **Persistencia** IndexedDB + localStorage (3 claves: preferencias, planilla cruda,
-  datos de usuario). **Reset total**.
+- **Arranque sin datos (rutina diaria)**: la app no auto-restaura la sesión; parte
+  vacía y exige cargar la programación (.xlsm) y el respaldo (JSON) cada día. Solo se
+  persisten las **preferencias** (tema, densidad, columnas). Como red de seguridad, si
+  hay trabajo sin exportar en el navegador, el inicio ofrece **«Recuperar esa sesión»**.
+  **Reset total** limpia todo.
 - **Exportación compartible con ID único**: «Respaldar ahora» genera el **JSON**
   reimportable *y* un libro **Excel** (`.xlsx`) **autoexplicativo y usable sin la app**,
   con hojas **Resumen** (ID único de exportación + indicadores de operatividad),

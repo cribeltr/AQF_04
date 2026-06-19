@@ -639,19 +639,30 @@ async function persistUsuario(){
 }
 async function persistPrefs(){ await idbSet(LS_PREF, prefs); lsSet(LS_PREF, prefs); }
 
+let _recuperable = null; // trabajo de una sesión anterior en este navegador (no aplicado)
+
+// Arranque: SOLO se restauran las PREFERENCIAS (tema, densidad, columnas…). Los datos
+// NO se auto-restauran: la app parte vacía y cada día se cargan la programación (.xlsm)
+// y el respaldo (JSON). Si quedó trabajo sin exportar de una sesión anterior en este
+// navegador, se detecta y se ofrece recuperarlo de forma opcional (red de seguridad).
 async function loadAll(){
-  // preferencias
   let p = await idbGet(LS_PREF) || lsGet(LS_PREF);
   if(p) prefs = Object.assign(prefs, p);
-  // planilla cruda
-  let d = await idbGet(LS_DATOS) || lsGet(LS_DATOS);
+  try{
+    const d = await idbGet(LS_DATOS) || lsGet(LS_DATOS);
+    const u = await idbGet(LS_USUARIO) || lsGet(LS_USUARIO);
+    const hayDatos = (d && (d.equipos||[]).length) || (u && ((u.detalleMP||[]).length||(u.pendientes||[]).length||(u.correctivos||[]).length));
+    if(hayDatos) _recuperable = { d, u };
+  }catch(e){}
+}
+// Restaura, a petición, el trabajo no exportado de la sesión anterior (opt-in).
+function recuperarSesion(){
+  if(!_recuperable) return;
+  const { d, u } = _recuperable;
   if(d){ state.equipos=d.equipos||[]; state.registros=d.registros||[]; state.meta=d.meta||null; }
-  // datos de usuario (prioritarios)
-  let u = await idbGet(LS_USUARIO) || lsGet(LS_USUARIO);
-  if(u){
-    state.detalleMP=u.detalleMP||[]; state.pendientes=u.pendientes||[];
-    state.correctivos=u.correctivos||[]; state.empresas=u.empresas||[]; state.ingenieros=u.ingenieros||[];
-  }
+  if(u){ state.detalleMP=u.detalleMP||[]; state.pendientes=u.pendientes||[]; state.correctivos=u.correctivos||[]; state.empresas=u.empresas||[]; state.ingenieros=u.ingenieros||[]; }
+  _recuperable=null; invalidarIndices(); dirtySinceBackup=false; render();
+  toast("Trabajo de la última sesión recuperado.");
 }
 async function markDirty(persist="usuario"){
   dirtySinceBackup = true;
@@ -1348,13 +1359,33 @@ function render(){
 function viewTablero(){
   const wrap=el("div");
   if(!state.equipos.length){
-    wrap.appendChild(el("div",{class:"empty"},
-      el("div",{class:"big"},"◧"),
-      el("div",{},"No hay planilla cargada."),
-      el("div",{class:"small muted",style:"margin:8px 0 16px"},"Carga ProgramaciónMP2026.xlsm para comenzar, o importa un respaldo anterior."),
-      el("button",{class:"btn primary",onclick:()=>$("#fileXlsm").click()},"Cargar .xlsm"),
-    ));
+    const tieneResp = state.detalleMP.length||state.pendientes.length||state.correctivos.length;
+    const gate=el("div",{class:"card",style:"max-width:700px;margin:22px auto 0;padding:20px 24px"});
+    gate.appendChild(el("h2",{style:"margin:0 0 3px;font-size:18px"},"Comenzar el día"));
+    gate.appendChild(el("div",{class:"muted",style:"margin-bottom:14px"},"La app parte sin datos. Cada día carga la programación y el respaldo del día anterior para arrancar."));
+    const step=(n,titulo,desc,btn,act,hecho)=>{
+      const row=el("div",{style:"display:flex;gap:13px;align-items:flex-start;padding:13px 0;border-top:1px solid var(--line-soft)"});
+      row.appendChild(el("span",{style:`flex:0 0 auto;width:26px;height:26px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;${hecho?"background:var(--ok);color:#fff":"background:var(--accent-tint);color:var(--accent-ink)"}`}, hecho?"✓":n));
+      row.appendChild(el("div",{style:"flex:1;min-width:0"}, el("div",{style:"font-weight:700;font-size:13.5px"},titulo), el("div",{class:"muted small",style:"margin-top:2px"},desc)));
+      row.appendChild(el("button",{class:"btn "+(n==="1"?"primary":""),onclick:act,style:"flex:0 0 auto;align-self:center"},btn));
+      return row;
+    };
+    gate.appendChild(step("1","Cargar programación (.xlsm)","Planilla oficial ProgramaciónMP2026 — maestro de equipos (solo lectura).","Cargar programación",()=>$("#fileXlsm").click(),false));
+    gate.appendChild(step("2","Cargar respaldo del día (JSON)","Tu trabajo del día anterior: mantenciones, pendientes y correctivos. El primer día aún no hay respaldo.","Cargar respaldo",()=>$("#fileJson").click(),!!tieneResp));
+    if(_recuperable) gate.appendChild(el("div",{style:"margin-top:14px;padding-top:14px;border-top:1px solid var(--line-soft);text-align:center"},
+      el("div",{class:"muted small",style:"margin-bottom:6px"},"Se encontró trabajo sin exportar de una sesión anterior en este navegador."),
+      el("button",{class:"btn sm",onclick:recuperarSesion},"↺ Recuperar esa sesión")));
+    wrap.appendChild(gate);
     return wrap;
+  }
+  // Programación cargada pero aún sin respaldo del día → guía para cargarlo
+  if(state.equipos.length && !state.detalleMP.length && !state.pendientes.length && !state.correctivos.length){
+    wrap.appendChild(el("div",{class:"banner info"},
+      el("span",{},"Programación cargada. Ahora carga el respaldo del día (JSON) para traer mantenciones, pendientes y correctivos."),
+      el("span",{class:"spacer"}),
+      el("button",{class:"btn sm",onclick:()=>$("#fileJson").click()},"Cargar respaldo"),
+      _recuperable?el("button",{class:"btn sm ghost",onclick:recuperarSesion},"↺ Recuperar sesión"):null
+    ));
   }
   // aviso respaldo
   if(dirtySinceBackup){
@@ -3029,7 +3060,7 @@ async function resetSilencioso(){
   try{ localStorage.removeItem(LS_PREF); localStorage.removeItem(LS_DATOS); localStorage.removeItem(LS_USUARIO);}catch(e){}
   state={ equipos:[],registros:[],detalleMP:[],pendientes:[],correctivos:[],empresas:[],ingenieros:[],meta:null };
   prefs={ columnasEquipos:null, columnasHistorial:null, ultimoEjecutor:"", ultimoTipoMant:"Interno", ultimaEmpresa:"", ultimoIngeniero:"" };
-  dirtySinceBackup=false; invalidarIndices();
+  _recuperable=null; dirtySinceBackup=false; invalidarIndices();
 }
 (async function init(){
   wireUI();
@@ -3037,7 +3068,7 @@ async function resetSilencioso(){
   if(location.hash.replace("#","").toLowerCase()==="reset"){
     await resetSilencioso();
     try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
-    toast("Iniciado sin datos. Carga el .xlsm para comenzar.");
+    toast("Iniciado sin datos. Carga la programación (.xlsm) y el respaldo para comenzar.");
   } else {
     await loadAll();
   }
