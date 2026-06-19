@@ -21,9 +21,15 @@ offline tras la primera carga.
 > abrir. Para arrancar **sin datos**, usa **«Más» → «Reset total»**, o abre
 > directamente **`index.html#reset`** (inicia limpio y vuelve a cargar el `.xlsm`).
 
-> **Atajos:** `/` enfoca la búsqueda · **Enter** abre la ficha si hay un solo
-> resultado · la búsqueda filtra in situ en Equipos, Pendientes, Correctivos y
-> Preventivo (desde otras vistas salta a Equipos).
+> **Atajos:** `⌘K` / `Ctrl+K` abre la **paleta de comandos** (busca equipos y
+> ejecuta acciones) · `/` enfoca la búsqueda · `j` / `k` mueven el foco por la
+> tabla y **Enter** abre la fila enfocada · **Enter** en la búsqueda abre la ficha
+> si hay un solo resultado · la búsqueda filtra in situ en Equipos, Pendientes,
+> Correctivos y Preventivo (desde otras vistas salta a Equipos).
+
+> **Apariencia:** sistema visual **«Consola compacta»** (alta densidad, acento
+> verde operativo). Botones en la barra superior para **tema claro/oscuro** (`☾`)
+> y **densidad compacta/cómoda** (`▤`); ambas preferencias se recuerdan.
 
 ### Migrar datos de la app anterior
 
@@ -89,6 +95,12 @@ planilla se conservan igualmente.
   se puede descargar/borrar desde «Más» — pensada para analizar el uso y proponer mejoras.
 - **Diseño responsivo**: la ficha de equipo y las tablas se adaptan al ancho de la
   pantalla, sin scroll horizontal.
+- **Sistema visual «Consola compacta»**: interfaz de alta densidad con acento verde
+  operativo, **tema claro/oscuro** y **densidad compacta/cómoda** conmutables (se
+  recuerdan), **paleta de comandos `⌘K`** (equipos + acciones) y **navegación por
+  teclado `j`/`k`** en las tablas. Es solo apariencia y atajos: la lógica de negocio
+  y los datos no cambian. El look de referencia se conserva en
+  `design-ref/SIGEM_V2_diseno-referencia.html`.
 
 ## Lógica de negocio
 
