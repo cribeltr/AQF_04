@@ -1922,7 +1922,7 @@ function openFicha(key){
         else if(c.f==="resultado") tr.appendChild(el("td",{}, it.resultado?(/^(Si|Si-RA|C[1-8]|FS|No|NU|Baja)$/.test(it.resultado)?badgeResultado(it.resultado):el("span",{class:"small"},esc(it.resultado))):""));
         else tr.appendChild(el("td",{class:"small"}, esc(it[c.f]||"")));
       }
-      tr.appendChild(el("td",{}, el("button",{class:"btn sm ghost",title: it.edit.kind==="mp_planilla"?"Registrar con fecha/detalle":"Editar este registro", onclick:()=>abrirEdicionHist(it,key)}, it.edit.kind==="mp_planilla"?"Registrar":"Editar")));
+      tr.appendChild(el("td",{}, it.edit ? el("button",{class:"btn sm ghost",title: it.edit.kind==="mp_planilla"?"Registrar con fecha/detalle":"Editar este registro", onclick:()=>abrirEdicionHist(it,key)}, it.edit.kind==="mp_planilla"?"Registrar":"Editar") : el("span",{class:"faint small"},"—")));
       tb.appendChild(tr);
     }
     t.appendChild(tb); tw.appendChild(t); histBox.appendChild(tw);
