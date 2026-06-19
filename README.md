@@ -7,8 +7,9 @@ Mantenimiento Preventivo (MP), correctivo, **pendientes** y reprogramaciones de
 
 Reconstrucción desde cero de la app anterior: **misma lógica de negocio, interfaz
 mucho más simple y directa**. Un único archivo `index.html` (HTML + CSS + JavaScript
-*vanilla* + [SheetJS](https://sheetjs.com/) vía CDN). Sin paso de build. Funciona
-offline tras la primera carga.
+*vanilla* + [SheetJS](https://sheetjs.com/) **embebido en el propio archivo**). Sin
+paso de build y **sin dependencias de red**: funciona **100% offline** desde el primer
+momento (la exportación e importación de Excel no requieren internet).
 
 ## Cómo usar — rutina diaria
 
@@ -151,7 +152,7 @@ solo cuenta `Si`/`Si-RA` · `C1/C5/C6/C7/C8` → reprogramación ≤30 días, `C
 ## Estructura del repositorio
 
 ```
-index.html                 La aplicación (HTML + JS vanilla + SheetJS por CDN)
+index.html                 La aplicación (HTML + JS vanilla + SheetJS embebido, offline)
 docs/                       Especificación y diagramas (lógica de negocio)
 sample-data/
   ProgramaciónMP2026.xlsm   Planilla oficial de ejemplo (fuente de datos)
