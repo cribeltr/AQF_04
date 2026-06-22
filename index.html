@@ -2750,6 +2750,7 @@ function openVolcarPanel(pv){
    Exportar / Importar JSON · Excel · Respaldo a carpeta
    ========================================================================= */
 const APP_NAME = "Gestión de equipos críticos HHHA";
+const APP_VERSION = "1.0";
 
 // Comprueba que el motor de Excel (SheetJS) esté disponible. Va embebido en el
 // archivo, así que debería estarlo siempre; si no, avisa en vez de fallar en silencio.
@@ -2879,7 +2880,7 @@ function buildWorkbook(exp){
 
   // 0) Resumen / metadatos — ID ÚNICO de exportación + indicadores de operatividad
   addSheet([
-    { Campo:"Aplicación", Valor:APP_NAME },
+    { Campo:"Aplicación", Valor:APP_NAME+" · v"+APP_VERSION },
     { Campo:"ID de exportación", Valor:exp.id },
     { Campo:"N° de versión", Valor:exp.seq },
     { Campo:"Fecha de exportación", Valor:exp.fecha },
@@ -3077,6 +3078,7 @@ function openMenu(){
   body.appendChild(item("Reset total","Borra preferencias, planilla y datos de usuario.",()=>{closeDrawer();resetTotal();},"" ));
   if(state.meta&&state.meta.ignoradosDetalle&&state.meta.ignoradosDetalle.length)
     body.appendChild(el("div",{class:"small muted",style:"margin-top:10px"}, `${state.meta.ignoradosDetalle.length} celdas con datos sucios fueron ignoradas en la última carga.`));
+  body.appendChild(el("div",{class:"faint small",style:"margin-top:14px;text-align:center"}, `${APP_NAME} · v${APP_VERSION}`));
   openDrawer("Acciones", body);
 }
 function openImportOld(){
