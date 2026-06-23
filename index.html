@@ -259,10 +259,11 @@ input[type=checkbox]{accent-color:var(--accent)}
 .drawer-back{position:fixed; inset:0; background:rgba(18,28,40,.36); backdrop-filter:blur(2px); -webkit-backdrop-filter:blur(2px); z-index:80; display:none; opacity:0; transition:opacity .18s}
 .drawer-back.open{display:block; opacity:1}
 .drawer{
-  position:fixed; top:0; right:0; height:100vh; width:min(740px,96vw); background:var(--bg);
+  position:fixed; top:0; right:0; height:100vh; width:min(640px,96vw); background:var(--bg);
   z-index:90; transform:translateX(100%); transition:transform .2s cubic-bezier(.22,.61,.36,1);
   display:flex; flex-direction:column; box-shadow:var(--shadow-lg);
 }
+.drawer.wide{width:min(1000px,96vw)}
 .drawer.open{transform:none}
 .drawer-head{
   position:relative; background:var(--surface); border-bottom:1px solid var(--line); padding:14px 20px;
@@ -271,7 +272,7 @@ input[type=checkbox]{accent-color:var(--accent)}
 .drawer-head::before{content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent-grad)}
 .drawer-head h3{margin:0; font-size:16px; font-weight:700; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; letter-spacing:-.01em}
 .drawer-body{overflow-y:auto; overflow-x:hidden; padding:18px 20px 64px; flex:1; min-width:0}
-.drawer-body table.grid td, .drawer-body table.grid th{white-space:normal; word-break:break-word}
+.drawer-body table.grid td, .drawer-body table.grid th{white-space:normal; overflow-wrap:break-word; word-break:normal}
 .drawer-body .tablewrap{overflow-x:auto; max-width:100%}
 .drawer-body .kv{grid-template-columns:minmax(120px,auto) 1fr}
 .drawer-body .kv dd{word-break:break-word; min-width:0}
@@ -355,6 +356,23 @@ hr.soft{border:none; border-top:1px solid var(--line-soft); margin:16px 0}
   .topbar{flex-wrap:wrap; gap:10px; padding:9px 14px}
   .search{order:3; flex-basis:100%; max-width:none}
   .search::after{display:none}
+}
+/* Responsive: en pantallas estrechas las tablas se apilan en tarjetas legibles
+   (cada celda muestra su etiqueta) en vez de amontonar muchas columnas. */
+@media(max-width:720px){
+  .drawer, .drawer.wide{width:100%; max-width:100%}
+  .kpis{grid-template-columns:repeat(auto-fit,minmax(130px,1fr))}
+  .tablewrap{overflow-x:hidden}
+  table.grid{min-width:0}
+  table.grid thead{display:none}
+  table.grid, table.grid tbody{display:block; width:100%}
+  table.grid tbody tr{display:block; background:var(--surface); border-bottom:none; box-shadow:inset 0 0 0 1px var(--line); border-radius:var(--radius-sm); margin:0 0 8px; padding:4px 0}
+  table.grid tbody tr:hover{background:var(--surface)}
+  table.grid td{display:flex; gap:10px; align-items:flex-start; border:none; padding:5px 12px; white-space:normal; font-size:12.5px}
+  table.grid td::before{content:attr(data-label); flex:0 0 38%; max-width:38%; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.02em; color:var(--muted); white-space:normal; line-height:1.25; padding-top:2px}
+  table.grid td:not([data-label])::before, table.grid td[data-label=""]::before{display:none}
+  table.grid td:empty{display:none}
+  table.grid td.mono{overflow-wrap:anywhere}
 }
 @media(prefers-reduced-motion:reduce){
   *{transition:none !important; animation:none !important}
@@ -2716,15 +2734,37 @@ function emptyNoData(){ return el("div",{class:"empty"}, el("div",{class:"big"},
 /* =========================================================================
    Drawer
    ========================================================================= */
+// Responsividad de tablas: copia la etiqueta de cada encabezado a sus celdas
+// (data-label) para que, en pantallas estrechas, cada fila se vea como tarjeta legible.
+function tagResponsiveTables(root){
+  if(!root) return;
+  root.querySelectorAll("table.grid").forEach(t=>{
+    const ths=[...t.querySelectorAll("thead th")];
+    if(!ths.length) return;
+    const labels=ths.map(th=>((th.querySelector(".sortable")||th).textContent||"").replace(/[▾↑↓]/g,"").trim());
+    t.querySelectorAll("tbody tr").forEach(tr=>{
+      [...tr.children].forEach((td,i)=>{ if(td.tagName==="TD" && labels[i]!=null) td.setAttribute("data-label", labels[i]); });
+    });
+  });
+}
+// Observa #view y #drawerBody y re-etiqueta las tablas cuando cambian (cubre render,
+// drawer y repintados dinámicos). Solo escucha childList → setAttribute no reentra.
+function observeResponsiveTables(){
+  ["#view","#drawerBody"].forEach(sel=>{ const node=$(sel); if(!node) return;
+    try{ new MutationObserver(()=>tagResponsiveTables(node)).observe(node,{childList:true,subtree:true}); }catch(e){}
+  });
+}
 function openDrawer(title, bodyNode, buttons=[], opts={}){
   recordEvent("panel", title);
   $("#drawerTitle").textContent=title;
+  $("#drawer").classList.toggle("wide", !!opts.wide);
   const b=$("#drawerBody"); b.innerHTML=""; b.appendChild(bodyNode);
   if(buttons.length){
     const bar=el("div",{style:"position:sticky;bottom:0;background:var(--bg);padding-top:14px;margin-top:14px;border-top:1px solid var(--line);display:flex;gap:8px;justify-content:flex-end"});
     buttons.forEach(btn=> bar.appendChild(el("button",{class:"btn "+(btn.cls||""),onclick:btn.act}, btn.label)));
     b.appendChild(bar);
   }
+  tagResponsiveTables(b);
   $("#drawer").classList.add("open"); $("#drawerBack").classList.add("open");
 }
 function closeDrawer(){
@@ -3227,6 +3267,7 @@ function wireUI(){
   $("#btnMenu").addEventListener("click",openMenu);
   // Look & UX: aplica tema/densidad guardados (sincroniza iconos) y conecta toggles + paleta.
   applyTheme(getTheme()); applyDensity(getDensity());
+  observeResponsiveTables();
   $("#btnCmd")?.addEventListener("click",openCmdk);
   $("#btnTheme")?.addEventListener("click",toggleTheme);
   $("#btnDensity")?.addEventListener("click",toggleDensity);
