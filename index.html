@@ -124,6 +124,10 @@ input,select,textarea{font-family:inherit; font-size:14px; color:var(--ink)}
 .btn.sm{padding:5px 10px; font-size:12px; border-radius:7px}
 .btn.ghost{border-color:transparent; background:transparent}
 .btn.ghost:hover{background:var(--panel)}
+.btn.danger{color:var(--bad); border-color:color-mix(in srgb, var(--bad) 35%, var(--line))}
+.btn.danger:hover{background:var(--bad-tint); border-color:var(--bad)}
+.btn.ghost.danger{border-color:transparent}
+.btn.ghost.danger:hover{background:var(--bad-tint)}
 .btn[disabled]{opacity:.45; cursor:not-allowed}
 /* ============================== Estructura ============================== */
 .shell{display:flex; flex:1; min-height:0}
@@ -2039,7 +2043,10 @@ function openFicha(key){
         else if(c.f==="resultado") tr.appendChild(el("td",{}, it.resultado?(/^(Si|Si-RA|C[1-8]|FS|No|NU|Baja)$/.test(it.resultado)?badgeResultado(it.resultado):el("span",{class:"small"},esc(it.resultado))):""));
         else tr.appendChild(el("td",{class:"small"}, esc(it[c.f]||"")));
       }
-      tr.appendChild(el("td",{}, it.edit ? el("button",{class:"btn sm ghost",title: it.edit.kind==="mp_planilla"?"Registrar con fecha/detalle":"Editar este registro", onclick:()=>abrirEdicionHist(it,key)}, it.edit.kind==="mp_planilla"?"Registrar":"Editar") : el("span",{class:"faint small"},"—")));
+      const acciones=[];
+      if(it.edit) acciones.push(el("button",{class:"btn sm ghost",title: it.edit.kind==="mp_planilla"?"Registrar con fecha/detalle":"Editar este registro", onclick:()=>abrirEdicionHist(it,key)}, it.edit.kind==="mp_planilla"?"Registrar":"Editar"));
+      if(it.del) acciones.push(el("button",{class:"btn sm ghost danger",title:"Eliminar este registro", onclick:()=>eliminarRegistroHist(it,key)}, "🗑"));
+      tr.appendChild(el("td",{}, acciones.length? el("div",{class:"tag-row",style:"gap:5px;flex-wrap:nowrap;justify-content:flex-end"}, ...acciones) : el("span",{class:"faint small"},"—")));
       tb.appendChild(tr);
     }
     t.appendChild(tb); tw.appendChild(t); histBox.appendChild(tw);
@@ -2057,7 +2064,7 @@ function buildTimeline(key){
       titulo:`MP ${m.resultado?RESULTADOS[m.resultado]||m.resultado:"(sin resultado)"}`,
       detalle:[m.tipoMantenimiento, m.observaciones].filter(Boolean).join(" · "),
       ejecutor:m.ejecutor||"", estadoEquipo:m.estadoEquipo||"", resultado:m.resultado||"",
-      edit:{kind:"mp",id:m.id} });
+      edit:{kind:"mp",id:m.id}, del:{kind:"mp",id:m.id} });
   }
   // Resultados oficiales de la planilla (.xlsm): solo mes, sin día exacto.
   const anio = (state.meta&&state.meta.fechaCarga? String(state.meta.fechaCarga).slice(0,4):"2026");
@@ -2074,14 +2081,14 @@ function buildTimeline(key){
     items.push({ fecha:p.creado, grupo:"Pendiente", tipo:`Pendiente · ${PEND_TIPOS[p.tipo]?.label||p.tipo}`, cls:"tl-pend", ico:"◷",
       titulo:`Pendiente ${PEND_TIPOS[p.tipo]?.label||p.tipo} ${p.estado==="Completado"?"(completado)":"creado"}`,
       detalle:p.descripcion||"", ejecutor:p.respEjecutivo||"", estadoEquipo:"", resultado:p.estado||"",
-      edit:{kind:"pend",id:p.id} });
+      edit:{kind:"pend",id:p.id}, del:{kind:"pend",id:p.id} });
     for(const s of (p.seguimiento||[])) items.push({ fecha:s.fecha, grupo:"Pendiente", tipo:"Seguimiento", cls:"tl-pend", ico:"·",
       titulo:"Seguimiento", detalle:s.texto, ejecutor:s.autor||"", estadoEquipo:"", resultado:"", edit:{kind:"pend",id:p.id} });
   }
   for(const c of corrByEquipo(key)){
     items.push({ fecha:c.fechaDocumento||c.creado, grupo:"Correctivo", tipo:"Correctivo · OT", cls:"tl-corr", ico:"⚒",
       titulo:`Correctivo abierto (Folio ${c.folioSigem||"?"})`, detalle:c.requerimiento||"",
-      ejecutor:c.tecnico||"", estadoEquipo:c.estadoEquipo||"", resultado:c.estadoEvento||"", edit:{kind:"corr",id:c.id} });
+      ejecutor:c.tecnico||"", estadoEquipo:c.estadoEquipo||"", resultado:c.estadoEvento||"", edit:{kind:"corr",id:c.id}, del:{kind:"corr",id:c.id} });
     for(const a of (c.avances||[])) items.push({ fecha:a.fecha||a.registrado, grupo:"Correctivo", tipo:`Correctivo · ${a.tipo}`, cls:"tl-corr", ico:"·",
       titulo:a.tipo, detalle:[a.numero,a.empresa,a.detalle].filter(Boolean).join(" · "),
       ejecutor:a.responsable||"", estadoEquipo:a.estadoEquipoVisita||"", resultado:"", edit:{kind:"corr",id:c.id} });
@@ -2092,7 +2099,7 @@ function buildTimeline(key){
   for(const ev of eventosEstadoDe(key)){
     items.push({ fecha:ev.fecha, grupo:"Estado", tipo:"Cambio de estado", cls:"tl-corr", ico:"◉",
       titulo:`Estado → ${ev.estado}`, detalle:[ev.motivo, ev.nota].filter(Boolean).join(" · "),
-      ejecutor:ev.por||"", estadoEquipo:ev.estado, resultado:"" });
+      ejecutor:ev.por||"", estadoEquipo:ev.estado, resultado:"", del:{kind:"estado",id:ev.id} });
   }
   return items.filter(i=>i.fecha).sort((a,b)=> String(b.fecha).localeCompare(String(a.fecha)));
 }
@@ -2113,6 +2120,30 @@ function abrirEdicionHist(it, key){
   else if(it.edit.kind==="mp_planilla"){ openMPForm(null, key, it.edit.mes); }
   else if(it.edit.kind==="pend"){ const p=state.pendientes.find(x=>x.id===it.edit.id); if(p) openPendForm(p); else fichaReturnKey=null; }
   else if(it.edit.kind==="corr"){ openCorrExpediente(it.edit.id); }
+}
+// Eliminar un registro del historial (MP, pendiente, correctivo o cambio de estado).
+// La MP de la planilla oficial (.xlsm) no es borrable: es la instantánea de origen.
+async function eliminarRegistroHist(it, key){
+  if(!it.del) return;
+  const { kind, id }=it.del;
+  const nombre={ mp:"esta mantención (MP)", pend:"este pendiente", corr:"este expediente correctivo y todos sus avances", estado:"este cambio de estado" }[kind]||"este registro";
+  if(!confirm(`¿Eliminar ${nombre}?\n\nEsta acción no se puede deshacer.`)) return;
+  const arr = kind==="mp"?state.detalleMP : kind==="pend"?state.pendientes : kind==="corr"?state.correctivos : kind==="estado"?state.eventosEstado : null;
+  if(!arr) return;
+  const i=arr.findIndex(x=>x.id===id);
+  if(i<0){ toast("No se encontró el registro."); return; }
+  arr.splice(i,1);
+  await markDirty("usuario");
+  toast("Registro eliminado.");
+  render(); openFicha(key); // refresca la lista de fondo y reabre la ficha actualizada
+}
+// Borrado directo por id+colección (usado por los botones «Eliminar» de los formularios).
+async function eliminarRegistroPorId(kind, id, key){
+  const arr = kind==="mp"?state.detalleMP : kind==="pend"?state.pendientes : kind==="corr"?state.correctivos : null;
+  if(!arr) return;
+  const i=arr.findIndex(x=>x.id===id); if(i<0){ toast("No se encontró el registro."); return; }
+  arr.splice(i,1); await markDirty("usuario"); toast("Registro eliminado.");
+  closeDrawer(); if(key) openFicha(key); else render();
 }
 
 /* ------------------------- Vista: Mant. Preventivo ----------------------- */
@@ -2257,6 +2288,7 @@ function openMPForm(mp, presetKey, presetMes){
 
   openDrawer(isNew?"Registrar MP":"Editar MP", body, [
     {label:"Cancelar",act:closeDrawer},
+    ...(isNew?[]:[{label:"Eliminar", cls:"danger", act:()=>{ if(confirm("¿Eliminar esta mantención (MP)?\nEsta acción no se puede deshacer.")) eliminarRegistroPorId("mp", mp.id, fichaReturnKey||mp.equipoKey); }}]),
     {label:"Guardar", cls:"primary", act:async()=>{
       if(!f.equipoKey){ toast("Elige el equipo."); return; }
       if(!f.fecha||!f.ejecutor||!f.resultado){ toast("Fecha, ejecutor y resultado son obligatorios."); return; }
@@ -2610,6 +2642,7 @@ function openPendForm(pend, preset){
     {label:"Cancelar",act:closeDrawer},
   ];
   if(!isNew && f.estado!=="Completado") buttons.push({label:"Marcar completado",act:async()=>{ const i=state.pendientes.findIndex(p=>p.id===f.id); f.estado="Completado"; f.fechaCompletado=todayISO(); if(i>=0)state.pendientes[i]=f; await markDirty("usuario"); closeDrawer(); render(); toast("Pendiente completado."); }});
+  if(!isNew) buttons.push({label:"Eliminar", cls:"danger", act:()=>{ if(confirm("¿Eliminar este pendiente?\nEsta acción no se puede deshacer.")) eliminarRegistroPorId("pend", f.id, fichaReturnKey||f.equipoKey); }});
   buttons.push({label:"Guardar",cls:"primary",act:async()=>{
     if(f.empresa && !state.empresas.includes(f.empresa)) state.empresas.push(f.empresa);
     if(isNew) state.pendientes.push(f);

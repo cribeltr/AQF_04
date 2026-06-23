@@ -112,8 +112,12 @@ planilla se conservan igualmente.
   **pendientes del equipo en línea** (completar/editar sin salir de la ficha); historial
   cronológico unificado (MP + pendientes + correctivos) **filtrable** (por tipo y texto),
   con **columnas configurables** (Fecha, Tipo, Qué pasó, Detalle, Ejecutor, Estado equipo,
-  Resultado — recordadas) y **edición por fila** (cada evento abre su editor y vuelve a la
-  ficha al cerrar; los resultados de planilla ofrecen «Registrar» para capturar el día).
+  Resultado — recordadas), **edición por fila** (cada evento abre su editor y vuelve a la
+  ficha al cerrar; los resultados de planilla ofrecen «Registrar» para capturar el día) y
+  **eliminación por fila** (botón 🗑, con confirmación) de los registros creados en la app
+  —MP, pendientes, correctivos y cambios de estado—. La MP de la planilla oficial (.xlsm)
+  no se borra: es la instantánea de origen. También hay botón «Eliminar» al editar una MP
+  o un pendiente.
 - **Pendientes**: además de abrir cada uno, botón **✓** para completar sin abrir el panel.
 - **Mantenimiento Preventivo**: registro del detalle, ciclo Borrador→Oficial,
   pendiente automático con causal o gestión pendiente.
