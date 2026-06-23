@@ -342,6 +342,17 @@ hr.soft{border:none; border-top:1px solid var(--line-soft); margin:16px 0}
 .fileinput{display:none}
 
 /* ============================== Responsive ============================= */
+/* Barra lateral contraíble (a modo icono); la preferencia se recuerda. */
+.nav{transition:width .18s ease}
+[data-nav="collapsed"] .nav{width:60px; padding:12px 8px}
+[data-nav="collapsed"] .nav button{justify-content:center; padding:9px 0}
+[data-nav="collapsed"] .nav button > span:not(.ico):not(.navbadge){display:none}
+[data-nav="collapsed"] .nav button.active::before{left:-8px}
+[data-nav="collapsed"] .nav .navbadge{position:absolute; top:3px; right:6px; margin:0; min-width:16px; padding:2px 5px; font-size:10px}
+[data-nav="collapsed"] .nav .navsep{margin:8px 12px}
+[data-nav="collapsed"] .nav .navhint{display:none}
+#btnNav{flex:0 0 auto}
+
 @media(max-width:880px){
   .main{padding:18px 16px 48px}
   .nav{width:66px; padding:12px 8px}
@@ -448,11 +459,12 @@ table.grid tbody tr.kb-focus td:first-child{ box-shadow:inset 3px 0 0 var(--acce
 @keyframes cmdk-in{ from{ opacity:0; transform:translateX(-50%) translateY(-8px) scale(.985); } to{ opacity:1; transform:translateX(-50%) translateY(0) scale(1); } }
 </style>
 <!-- Aplica tema y densidad guardados antes de pintar, para evitar parpadeo. -->
-<script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('sigem_theme')||'light');document.documentElement.setAttribute('data-density',localStorage.getItem('sigem_density')||'comodo');}catch(e){}</script>
+<script>try{document.documentElement.setAttribute('data-theme',localStorage.getItem('sigem_theme')||'light');document.documentElement.setAttribute('data-density',localStorage.getItem('sigem_density')||'comodo');document.documentElement.setAttribute('data-nav',localStorage.getItem('sigem_nav')||'expanded');}catch(e){}</script>
 </head>
 <body>
 
 <div class="topbar">
+  <button class="btn icon" id="btnNav" title="Contraer / expandir el menú lateral" aria-label="Contraer o expandir el menú lateral">☰</button>
   <div class="brand">
     <span class="brand-mark" aria-hidden="true">MP</span>
     <span class="brand-text">Gestión de equipos críticos<small>HHHA · Equipamiento clínico</small></span>
@@ -1417,7 +1429,7 @@ function renderNav(){
   const pendAbiertos = state.pendientes.filter(p=>p.estado!=="Completado").length;
   const opCount = state.equipos.length? equiposOperatividad().length : 0;
   for(const n of NAV){
-    const b=el("button",{class:ui.view===n.id?"active":"", onclick:()=>{ ui.view=n.id; render(); }},
+    const b=el("button",{class:ui.view===n.id?"active":"", title:n.label, onclick:()=>{ ui.view=n.id; render(); }},
       el("span",{class:"ico"},n.ico), el("span",{},n.label));
     if(n.id==="pendientes" && pendAbiertos) b.appendChild(el("span",{class:"navbadge"},String(pendAbiertos)));
     if(n.id==="tablero" && opCount) b.appendChild(el("span",{class:"navbadge"},String(opCount)));
@@ -3155,6 +3167,16 @@ function applyDensity(d){
 }
 function toggleDensity(){ applyDensity(getDensity()==="compacto"?"comodo":"compacto"); recordEvent("ui","Densidad → "+getDensity()); }
 
+/* ----------------------------- Barra lateral contraíble ----------------- */
+function getNav(){ try{ return localStorage.getItem("sigem_nav")||"expanded"; }catch(e){ return "expanded"; } }
+function applyNav(v){
+  document.documentElement.setAttribute("data-nav", v);
+  try{ localStorage.setItem("sigem_nav", v); }catch(e){}
+  const b=document.getElementById("btnNav");
+  if(b) b.title = v==="collapsed" ? "Expandir el menú lateral" : "Contraer el menú lateral";
+}
+function toggleNav(){ applyNav(getNav()==="collapsed"?"expanded":"collapsed"); }
+
 /* ----------------------------- Paleta de comandos (⌘K) ------------------ */
 let _cmdk = null;       // { scrim, input, list, flat:[{it,node}], idx }
 
@@ -3271,6 +3293,7 @@ function wireUI(){
   $("#btnCmd")?.addEventListener("click",openCmdk);
   $("#btnTheme")?.addEventListener("click",toggleTheme);
   $("#btnDensity")?.addEventListener("click",toggleDensity);
+  applyNav(getNav()); $("#btnNav")?.addEventListener("click",toggleNav);
   $("#drawerClose").addEventListener("click",closeDrawer);
   $("#drawerBack").addEventListener("click",closeDrawer);
   $("#fileXlsm").addEventListener("change",e=>{ const f=e.target.files[0]; if(f)importXlsm(f); e.target.value=""; });
