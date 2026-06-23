@@ -342,6 +342,21 @@ hr.soft{border:none; border-top:1px solid var(--line-soft); margin:16px 0}
 .fileinput{display:none}
 
 /* ============================== Responsive ============================= */
+/* Alertas y recordatorios */
+.alert-badge{position:absolute; top:-5px; right:-5px; min-width:16px; height:16px; padding:0 4px; border-radius:9px;
+  background:var(--bad); color:#fff; font-size:10px; font-weight:700; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px var(--surface)}
+#btnAlerts.has-alerts{border-color:color-mix(in srgb, var(--bad) 40%, var(--line))}
+.alert-row{display:flex; align-items:center; gap:13px; width:100%; text-align:left; padding:12px 14px; margin-bottom:9px;
+  border:1px solid var(--line); border-left-width:4px; border-radius:var(--radius); background:var(--surface); cursor:pointer; transition:background .12s, box-shadow .12s}
+.alert-row:hover{background:var(--panel); box-shadow:var(--shadow-sm)}
+.alert-row.sev-alert{border-left-color:var(--bad)} .alert-row.sev-warn{border-left-color:var(--warn)}
+.alert-row .a-n{font-size:24px; font-weight:700; font-variant-numeric:tabular-nums; min-width:42px; text-align:center}
+.alert-row.sev-alert .a-n{color:var(--bad)} .alert-row.sev-warn .a-n{color:var(--warn)}
+.alert-row .a-main{flex:1; min-width:0}
+.alert-row .a-title{font-weight:600; font-size:13.5px}
+.alert-row .a-sub{font-size:11.5px; color:var(--muted); margin-top:1px}
+.alert-row .a-go{color:var(--faint); font-size:18px; flex:0 0 auto}
+
 /* Barra lateral contraíble (a modo icono); la preferencia se recuerda. */
 .nav{transition:width .18s ease}
 [data-nav="collapsed"] .nav{width:60px; padding:12px 8px}
@@ -475,6 +490,7 @@ table.grid tbody tr.kb-focus td:first-child{ box-shadow:inset 3px 0 0 var(--acce
   <div class="topactions">
     <button class="btn primary" id="btnLoadXlsm">Cargar .xlsm</button>
     <button class="btn" id="btnBackupNow" title="Exporta respaldo JSON (reimportable) + libro Excel">Respaldar ahora</button>
+    <button class="btn icon" id="btnAlerts" title="Alertas y recordatorios" style="position:relative">🔔<span class="alert-badge" id="alertBadge" hidden></span></button>
     <button class="btn sm" id="btnCmd" title="Buscar equipo o ejecutar acción (⌘K / Ctrl+K)">⌘K</button>
     <button class="btn icon" id="btnTheme" title="Tema claro/oscuro">☾</button>
     <button class="btn icon" id="btnDensity" title="Densidad compacta/cómoda">▦</button>
@@ -1462,6 +1478,8 @@ function render(){
     case "resumen": v.appendChild(viewResumen()); break;
     default: v.appendChild(viewTablero());
   }
+  syncAlertsBtn();
+  avisarAlertasUnaVez();
 }
 
 /* ----------------------------- Vista: Tablero ---------------------------- */
@@ -3177,6 +3195,54 @@ function applyNav(v){
 }
 function toggleNav(){ applyNav(getNav()==="collapsed"?"expanded":"collapsed"); }
 
+/* ----------------------------- Alertas y recordatorios ------------------ */
+// Acciones que requieren atención hoy, con acceso directo a la vista correspondiente.
+function computeAlerts(){
+  const out=[];
+  if(!state.equipos.length) return out;
+  const sinRes=mpSinResultado();
+  const mpVenc=sinRes.filter(x=>x.vencida).length;
+  if(mpVenc) out.push({ icon:"⚠", sev:"alert", titulo:"MP vencidas", sub:"meses pasados sin registro", n:mpVenc, go:()=>{ui.view="preventivo";render();} });
+  const pendVenc=state.pendientes.filter(p=>p.estado!=="Completado" && pendienteVencido(p)).length;
+  if(pendVenc) out.push({ icon:"◷", sev:"alert", titulo:"Pendientes vencidos", sub:"pasada la fecha de compromiso", n:pendVenc, go:()=>{ui.view="pendientes"; ui.pendEstado="Abierto"; ui.pendSinSeg=false; render();} });
+  const sinSeg=equiposSinSeguimiento().length;
+  if(sinSeg) out.push({ icon:"●", sev:"alert", titulo:"Equipos sin seguimiento", sub:`detenidos sin actualizar ≥${diasSinSegPref()} días`, n:sinSeg, go:()=>goEquipos({sinSeg:true}) });
+  const firmar=state.pendientes.filter(p=>p.tipo==="reprogramacion" && p.estado!=="Completado" && !reprogFirmada(p)).length;
+  if(firmar) out.push({ icon:"✍", sev:"warn", titulo:"Reprogramaciones por firmar", sub:"esperan 2 firmas", n:firmar, go:()=>{ui.view="reprogramacion";render();} });
+  const mpMes=sinRes.length-mpVenc;
+  if(mpMes) out.push({ icon:"✓", sev:"warn", titulo:"MP del mes por gestionar", sub:"programadas este mes sin resultado", n:mpMes, go:()=>{ui.view="preventivo";render();} });
+  return out;
+}
+function syncAlertsBtn(){
+  const b=$("#btnAlerts"), badge=$("#alertBadge"); if(!b||!badge) return;
+  const a=computeAlerts(); const cats=a.length;
+  b.classList.toggle("has-alerts", a.some(x=>x.sev==="alert"));
+  if(cats){ badge.textContent=String(cats); badge.hidden=false; } else badge.hidden=true;
+  b.title = cats? `${cats} tipo(s) de alerta — clic para ver` : "Alertas y recordatorios — todo al día";
+}
+function openAlerts(){
+  const body=el("div");
+  if(!state.equipos.length){ body.appendChild(el("div",{class:"small muted"},"Carga la programación y el respaldo del día para ver las alertas.")); openDrawer("Alertas y recordatorios", body); return; }
+  const alerts=computeAlerts();
+  if(!alerts.length){ body.appendChild(el("div",{class:"empty"}, el("div",{class:"big"},"✓"), el("div",{},"Todo al día."), el("div",{class:"small muted",style:"margin-top:6px"},"No hay acciones pendientes de atención."))); openDrawer("Alertas y recordatorios", body); return; }
+  body.appendChild(el("div",{class:"small muted",style:"margin-bottom:12px"},"Acciones que requieren tu atención. Toca una para ir directo:"));
+  for(const a of alerts){
+    body.appendChild(el("button",{class:"alert-row sev-"+a.sev, onclick:()=>{ closeDrawer(); a.go(); }},
+      el("div",{class:"a-n"}, String(a.n)),
+      el("div",{class:"a-main"}, el("div",{class:"a-title"}, a.icon+"  "+a.titulo), el("div",{class:"a-sub"}, a.sub)),
+      el("div",{class:"a-go"}, "›")));
+  }
+  openDrawer("Alertas y recordatorios", body);
+}
+// Aviso proactivo al abrir (una vez por sesión, cuando ya hay datos cargados).
+let _alertasAvisadas=false;
+function avisarAlertasUnaVez(){
+  if(_alertasAvisadas || !state.equipos.length) return;
+  _alertasAvisadas=true;
+  const a=computeAlerts(); const total=a.reduce((s,x)=>s+x.n,0);
+  if(total) toast(`🔔 ${total} alerta(s) requieren atención — abre la campana para verlas.`);
+}
+
 /* ----------------------------- Paleta de comandos (⌘K) ------------------ */
 let _cmdk = null;       // { scrim, input, list, flat:[{it,node}], idx }
 
@@ -3294,6 +3360,7 @@ function wireUI(){
   $("#btnTheme")?.addEventListener("click",toggleTheme);
   $("#btnDensity")?.addEventListener("click",toggleDensity);
   applyNav(getNav()); $("#btnNav")?.addEventListener("click",toggleNav);
+  $("#btnAlerts")?.addEventListener("click",openAlerts);
   $("#drawerClose").addEventListener("click",closeDrawer);
   $("#drawerBack").addEventListener("click",closeDrawer);
   $("#fileXlsm").addEventListener("change",e=>{ const f=e.target.files[0]; if(f)importXlsm(f); e.target.value=""; });

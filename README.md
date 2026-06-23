@@ -98,6 +98,11 @@ planilla se conservan igualmente.
   de auto-guardado). El respaldo de seguridad es reimportable como cualquier otro.
 - **Tablero / centro de control**: banda de KPIs reactivos, tablero de operatividad
   y panel «Por volcar al `.xlsm`» (celda exacta hoja/fila/columna, copiar/exportar).
+- **Alertas y recordatorios**: campana (🔔) en la barra superior con contador y un
+  panel de **acciones que requieren atención** —MP vencidas, pendientes vencidos,
+  equipos detenidos sin seguimiento, reprogramaciones por firmar, MP del mes por
+  gestionar— cada una con acceso directo a su vista. Aviso proactivo al abrir (una vez
+  por sesión) cuando hay alertas.
 - **Equipos**: tabla densa (~1.000 filas, sin virtualización), búsqueda global con
   *debounce* (atajo `/` para enfocar; **Enter** abre la ficha si queda un único
   resultado; desde otras vistas salta a Equipos), **filtro por encabezado tipo Excel**
