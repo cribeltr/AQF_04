@@ -1,0 +1,252 @@
+{
+  "app": "Sistema de Gestión MP 2026 — Equipamiento Clínico HHHA",
+  "tipo": "respaldo-gmp2026",
+  "version": 2,
+  "fecha": "2026-06-18T14:14:34.540Z",
+  "equipos": [
+    {
+      "fila": 8,
+      "id": "1",
+      "carpeta": "1",
+      "inventario": "2-115361",
+      "equipo": "Incubadora",
+      "servicio": "Neonatología",
+      "unidad": "UCI Neonatología",
+      "ubicacion": "UTI 1/2",
+      "procedencia": "Arriendo",
+      "marca": "DRAGER",
+      "modelo": "CALEO",
+      "serie": "ASJL-0008",
+      "anio": "2018",
+      "vidaUtil": "2",
+      "clasificacion": "Fija",
+      "enu": "",
+      "key": "S:ASJL-0008",
+      "prog": {
+        "1": "X",
+        "4": "X",
+        "7": "X",
+        "10": "X"
+      },
+      "regObs": ""
+    },
+    {
+      "fila": 9,
+      "id": "2",
+      "carpeta": "2",
+      "inventario": "2-116070",
+      "equipo": "Incubadora",
+      "servicio": "Neonatología",
+      "unidad": "UCI Neonatología",
+      "ubicacion": "SALA EQUIPOS",
+      "procedencia": "Arriendo",
+      "marca": "GENERAL ELECTRIC",
+      "modelo": "GIRAFFE OMNIBED CARESTATION",
+      "serie": "TABX62307",
+      "anio": "2018",
+      "vidaUtil": "2",
+      "clasificacion": "Fija",
+      "enu": "",
+      "key": "S:TABX62307",
+      "prog": {
+        "1": "X",
+        "4": "X",
+        "7": "X",
+        "10": "X"
+      },
+      "regObs": ""
+    }
+  ],
+  "registros": [
+    {
+      "equipoKey": "S:ASJL-0008",
+      "mes": 1,
+      "programa": "X",
+      "resultado": "Si",
+      "obs": ""
+    },
+    {
+      "equipoKey": "S:ASJL-0008",
+      "mes": 4,
+      "programa": "X",
+      "resultado": "Si",
+      "obs": ""
+    },
+    {
+      "equipoKey": "S:ASJL-0008",
+      "mes": 7,
+      "programa": "X",
+      "resultado": "",
+      "obs": ""
+    }
+  ],
+  "manuales": [
+    {
+      "id": "mqax50trqnnbwv",
+      "creado": "2026-06-12",
+      "equipoKey": "S:OV5APR17",
+      "fecha": "2026-05-26",
+      "programacion": "X",
+      "ejecutor": "Cristián Beltrán Oviedo",
+      "resultado": "Si",
+      "observaciones": "",
+      "estadoEquipo": "Operativo",
+      "gestionPendiente": false,
+      "tipoRegistro": "Oficial",
+      "actualizado": "2026-06-12"
+    },
+    {
+      "id": "mqaxhfy85a6c07",
+      "creado": "2026-06-12",
+      "equipoKey": "S:3SXA4HC0",
+      "fecha": "2026-05-26",
+      "programacion": "X",
+      "ejecutor": "Cristián Beltrán Oviedo",
+      "resultado": "Si",
+      "observaciones": "",
+      "estadoEquipo": "Operativo",
+      "gestionPendiente": false,
+      "tipoRegistro": "Oficial"
+    }
+  ],
+  "pendientes": [
+    {
+      "id": "mqb8buzdsxcxiz",
+      "creado": "2026-06-12",
+      "equipoKey": "S:8VCAJN39",
+      "fechaCompromiso": "2026-06-15",
+      "tipo": "Reprogramación Mantención Preventiva",
+      "descripcion": "Asociado a MP del 30-04-2026 (resultado C6).",
+      "tareas": [
+        {
+          "texto": "sacar firma",
+          "hecha": false,
+          "comentarios": [],
+          "subtareas": []
+        }
+      ],
+      "respAdmin": "Cristián Beltrán Oviedo",
+      "respEjec": "Cristián Beltrán Oviedo",
+      "gestiones": [],
+      "estado": "Abierto",
+      "actualizado": "2026-06-12",
+      "fechaCompletado": ""
+    },
+    {
+      "id": "mqb8iewu80edmd",
+      "creado": "2026-06-12",
+      "equipoKey": "S:3SXA4HCP",
+      "fechaCompromiso": "2026-06-12",
+      "tipo": "Otro",
+      "descripcion": "carpeta no la encuentro",
+      "tareas": [],
+      "respAdmin": "Cristián Beltrán Oviedo",
+      "respEjec": "Cristián Beltrán Oviedo",
+      "gestiones": [],
+      "estado": "Completado",
+      "actualizado": "2026-06-15",
+      "fechaCompletado": "2026-06-15"
+    },
+    {
+      "id": "mqb9qhgg8hjnu8",
+      "creado": "2026-06-12",
+      "equipoKey": "S:3SXA4HDJ",
+      "fechaCompromiso": "2026-06-12",
+      "tipo": "Protocolo Interno de Mantenimiento",
+      "descripcion": "",
+      "tareas": [],
+      "respAdmin": "Cristián Beltrán Oviedo",
+      "respEjec": "Cristián Beltrán Oviedo",
+      "gestiones": [],
+      "estado": "Abierto"
+    },
+    {
+      "id": "mqba6bqworez8g",
+      "creado": "2026-06-12",
+      "equipoKey": "S:0VSANY78",
+      "fechaCompromiso": "2026-06-12",
+      "tipo": "Protocolo Externo de Mantenimiento",
+      "descripcion": "",
+      "tareas": [],
+      "respAdmin": "Cristián Beltrán Oviedo",
+      "respEjec": "Cristián Beltrán Oviedo",
+      "gestiones": [],
+      "estado": "Abierto"
+    }
+  ],
+  "correctivos": [
+    {
+      "id": "mqb5rb0khpkue5",
+      "creado": "2026-06-12",
+      "equipoKey": "S:5SXAEL56",
+      "tipoEvento": "Orden de Trabajo",
+      "requerimiento": "FAVOR REPONER TAPA DEL CAZA BURBUJAS, DADO QUE SE QUEBRÒ LA ORIGINAL. GRACIAS",
+      "fechaDocumento": "2026-01-16",
+      "folioSigem": "2026-121109-19-997",
+      "tecnico": "Cristián Beltrán Oviedo",
+      "estadoEquipo": "Operativo",
+      "tipoCompra": "Trato Directo",
+      "informeTecnicoNum": "107",
+      "informeTecnicoFecha": "2026-02-13",
+      "informeTecnicoResp": "Cristián Beltrán Oviedo",
+      "empresa": "PENTAFARMA S.A.",
+      "ordenCompraNum": "1488-466-TD26",
+      "ordenCompraFecha": "2026-03-27",
+      "ordenCompraDesc": "Visita técnica para 4\nMáquinas de Diálisis\nmarca Fresenius,\nmodelo 4008B, series\nOV5APR17, 3SXA4HC9,\n5SXAEL56, 5SXAEL57\ny la Reposición de la\nTapa de Cámara\nVenosa de equipo serie\n5SXAEL58, ST 19-2584,\n19-1962, 19-997, 19-996\ny 19-14102 del Servicio\nUCI Adulto y\nHemodiálisis.\nCotizaciones N°0109 y\nN°0066.",
+      "estadoEvento": "Cerrado",
+      "fechaCierre": "2026-03-31",
+      "gestionPendiente": false,
+      "tipoRegistro": "Oficial",
+      "avances": [
+        {
+          "id": "mqb5srn8y7unn7",
+          "tipo": "Informe técnico emitido",
+          "fecha": "2026-02-13",
+          "detalle": "",
+          "registrado": "2026-06-12T16:46:59.060Z",
+          "informeNum": "107",
+          "responsable": "Cristián Beltrán Oviedo",
+          "empresa": "PENTAFARMA S.A."
+        },
+        {
+          "id": "mqb5tiwcwv899x",
+          "tipo": "OC emitida",
+          "fecha": "2026-03-27",
+          "detalle": "",
+          "registrado": "2026-06-12T16:47:34.380Z",
+          "ocNum": "1488-466-TD26",
+          "ocDesc": "Visita técnica para 4\nMáquinas de Diálisis\nmarca Fresenius,\nmodelo 4008B, series\nOV5APR17, 3SXA4HC9,\n5SXAEL56, 5SXAEL57\ny la Reposición de la\nTapa de Cámara\nVenosa de equipo serie\n5SXAEL58, ST 19-2584,\n19-1962, 19-997, 19-996\ny 19-14102 del Servicio\nUCI Adulto y\nHemodiálisis.\nCotizaciones N°0109 y\nN°0066."
+        },
+        {
+          "id": "mqb5x4x26jpr08",
+          "tipo": "Visita / Ejecución realizada",
+          "fecha": "2026-03-31",
+          "detalle": "Se remplaza tapa camara venosa, repuesto comprado por cliente con orden de compra N° 1488-466-TD26. Test T1 OK",
+          "registrado": "2026-06-12T16:50:22.886Z",
+          "estadoEquipoVisita": "Operativo"
+        },
+        {
+          "id": "mqb5xk1rqojoyj",
+          "tipo": "Cierre del expediente",
+          "fecha": "2026-03-31",
+          "detalle": "",
+          "registrado": "2026-06-12T16:50:42.495Z",
+          "estadoEquipoCierre": "Operativo"
+        }
+      ],
+      "actualizado": "2026-06-12",
+      "estadoEquipoCierre": "Operativo"
+    }
+  ],
+  "empresas": [
+    "PENTAFARMA S.A.",
+    "DRAGER CHILE LTDA."
+  ],
+  "ingenieros": [
+    "Johans Herrera"
+  ],
+  "meta": {
+    "archivo": "ProgramaciónMP_2026.xlsm",
+    "_nota": "ejemplo reducido del formato de la app anterior (solo para probar el importador)"
+  }
+}

@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1560" height="1180" viewBox="0 0 1560 1180" font-family="system-ui,Segoe UI,Roboto,Arial,sans-serif">
+<rect width="1560" height="1180" fill="#eef1f0"/>
+<text x="780" y="46" text-anchor="middle" font-size="26" font-weight="700" fill="#16262c">Sistema de Gestión MP 2026 — Mapa mental</text>
+<text x="780" y="72" text-anchor="middle" font-size="14" fill="#5c6862">Equipamiento Clínico HHHA · app de un solo archivo (HTML + JS vanilla + SheetJS)</text>
+<path d="M 650 590 C 535.0 590, 535.0 274.0, 420 274.0" stroke="#0e7c86" stroke-width="2.5" fill="none" opacity="0.55"/>
+<rect x="40" y="190.0" width="380" height="168" rx="14" fill="#ffffff" stroke="#0e7c86" stroke-width="2"/>
+<rect x="40" y="190.0" width="380" height="34" rx="14" fill="#0e7c86"/>
+<rect x="40" y="208.0" width="380" height="16" fill="#0e7c86"/>
+<text x="56" y="213.0" font-size="16" font-weight="700" fill="#ffffff">Stack &amp; arranque</text>
+<text x="56" y="246.0" font-size="13.5" fill="#16262c">• Un solo archivo .html · JS vanilla</text>
+<text x="56" y="268.0" font-size="13.5" fill="#16262c">• SheetJS (xlsx) por CDN</text>
+<text x="56" y="290.0" font-size="13.5" fill="#16262c">• Funciona offline tras la 1ª carga</text>
+<text x="56" y="312.0" font-size="13.5" fill="#16262c">• Persistencia: IndexedDB + localStorage</text>
+<text x="56" y="334.0" font-size="13.5" fill="#16262c">• 3 claves: preferencias · planilla · usuario</text>
+<path d="M 650 590 C 535.0 590, 535.0 481.0, 420 481.0" stroke="#3a5fa8" stroke-width="2.5" fill="none" opacity="0.55"/>
+<rect x="40" y="386.0" width="380" height="190" rx="14" fill="#ffffff" stroke="#3a5fa8" stroke-width="2"/>
+<rect x="40" y="386.0" width="380" height="34" rx="14" fill="#3a5fa8"/>
+<rect x="40" y="404.0" width="380" height="16" fill="#3a5fa8"/>
+<text x="56" y="409.0" font-size="16" font-weight="700" fill="#ffffff">Entrada de datos</text>
+<text x="56" y="442.0" font-size="13.5" fill="#16262c">• Cargar .xlsm (solo lectura)</text>
+<text x="70" y="464.0" font-size="13.5" fill="#16262c">hojas PMP_2026 + Registro_MP-2026</text>
+<text x="56" y="486.0" font-size="13.5" fill="#16262c">• Importar respaldo anterior (migración)</text>
+<text x="56" y="508.0" font-size="13.5" fill="#16262c">• Importar planilla integrada (.xlsx)</text>
+<text x="56" y="530.0" font-size="13.5" fill="#16262c">• Importar consolidado (.xlsx)</text>
+<text x="56" y="552.0" font-size="13.5" fill="#16262c">• Importar / Exportar respaldo JSON</text>
+<path d="M 650 590 C 535.0 590, 535.0 688.0, 420 688.0" stroke="#6b4ea0" stroke-width="2.5" fill="none" opacity="0.55"/>
+<rect x="40" y="604.0" width="380" height="168" rx="14" fill="#ffffff" stroke="#6b4ea0" stroke-width="2"/>
+<rect x="40" y="604.0" width="380" height="34" rx="14" fill="#6b4ea0"/>
+<rect x="40" y="622.0" width="380" height="16" fill="#6b4ea0"/>
+<text x="56" y="627.0" font-size="16" font-weight="700" fill="#ffffff">Modelo de datos</text>
+<text x="56" y="660.0" font-size="13.5" fill="#16262c">• equipos · registros (de la planilla)</text>
+<text x="56" y="682.0" font-size="13.5" fill="#16262c">• detalleMP (mantenciones)</text>
+<text x="56" y="704.0" font-size="13.5" fill="#16262c">• pendientes — 5 tipos / 3 orígenes</text>
+<text x="56" y="726.0" font-size="13.5" fill="#16262c">• correctivos — Folio SIGEM + avances</text>
+<text x="56" y="748.0" font-size="13.5" fill="#16262c">• empresas · ingenieros</text>
+<path d="M 650 590 C 535.0 590, 535.0 895.0, 420 895.0" stroke="#b3760a" stroke-width="2.5" fill="none" opacity="0.55"/>
+<rect x="40" y="800.0" width="380" height="190" rx="14" fill="#ffffff" stroke="#b3760a" stroke-width="2"/>
+<rect x="40" y="800.0" width="380" height="34" rx="14" fill="#b3760a"/>
+<rect x="40" y="818.0" width="380" height="16" fill="#b3760a"/>
+<text x="56" y="823.0" font-size="16" font-weight="700" fill="#ffffff">Lógica de negocio</text>
+<text x="56" y="856.0" font-size="13.5" fill="#16262c">• Clave equipo: serie o inventario</text>
+<text x="56" y="878.0" font-size="13.5" fill="#16262c">• Borrador → Oficial al recargar</text>
+<text x="56" y="900.0" font-size="13.5" fill="#16262c">• Cumplimiento: solo Sí / Si-RA</text>
+<text x="56" y="922.0" font-size="13.5" fill="#16262c">• Causales C1–C8: ≤30 días / sin fecha</text>
+<text x="56" y="944.0" font-size="13.5" fill="#16262c">• Estados del equipo por resultado</text>
+<text x="56" y="966.0" font-size="13.5" fill="#16262c">• Pendiente automático desde una MP</text>
+<path d="M 910 590 C 1025.0 590, 1025.0 416.0, 1140 416.0" stroke="#3f7d2f" stroke-width="2.5" fill="none" opacity="0.55"/>
+<rect x="1140" y="321.0" width="380" height="190" rx="14" fill="#ffffff" stroke="#3f7d2f" stroke-width="2"/>
+<rect x="1140" y="321.0" width="380" height="34" rx="14" fill="#3f7d2f"/>
+<rect x="1140" y="339.0" width="380" height="16" fill="#3f7d2f"/>
+<text x="1156" y="344.0" font-size="16" font-weight="700" fill="#ffffff">Vistas</text>
+<text x="1156" y="377.0" font-size="13.5" fill="#16262c">• Tablero · KPIs · Por volcar al .xlsm</text>
+<text x="1156" y="399.0" font-size="13.5" fill="#16262c">• Equipos: tabla densa, filtros,</text>
+<text x="1170" y="421.0" font-size="13.5" fill="#16262c">columnas, búsqueda, ficha + historial</text>
+<text x="1156" y="443.0" font-size="13.5" fill="#16262c">• Mant. Preventivo · Correctivo</text>
+<text x="1156" y="465.0" font-size="13.5" fill="#16262c">• Pendientes · Reprogramación</text>
+<text x="1156" y="487.0" font-size="13.5" fill="#16262c">• Resumen mes × código (drill-down)</text>
+<path d="M 910 590 C 1025.0 590, 1025.0 612.0, 1140 612.0" stroke="#0a8f6e" stroke-width="2.5" fill="none" opacity="0.55"/>
+<rect x="1140" y="539.0" width="380" height="146" rx="14" fill="#ffffff" stroke="#0a8f6e" stroke-width="2"/>
+<rect x="1140" y="539.0" width="380" height="34" rx="14" fill="#0a8f6e"/>
+<rect x="1140" y="557.0" width="380" height="16" fill="#0a8f6e"/>
+<text x="1156" y="562.0" font-size="16" font-weight="700" fill="#ffffff">Salida &amp; respaldo</text>
+<text x="1156" y="595.0" font-size="13.5" fill="#16262c">• Respaldar ahora: JSON + Excel</text>
+<text x="1156" y="617.0" font-size="13.5" fill="#16262c">• Auto-guardado a carpeta (al cerrar)</text>
+<text x="1156" y="639.0" font-size="13.5" fill="#16262c">• Exportar a Excel en cada vista</text>
+<text x="1156" y="661.0" font-size="13.5" fill="#16262c">• Por volcar al .xlsm (hoja/fila/col)</text>
+<path d="M 910 590 C 1025.0 590, 1025.0 786.0, 1140 786.0" stroke="#b3402f" stroke-width="2.5" fill="none" opacity="0.55"/>
+<rect x="1140" y="713.0" width="380" height="146" rx="14" fill="#ffffff" stroke="#b3402f" stroke-width="2"/>
+<rect x="1140" y="713.0" width="380" height="34" rx="14" fill="#b3402f"/>
+<rect x="1140" y="731.0" width="380" height="16" fill="#b3402f"/>
+<text x="1156" y="736.0" font-size="16" font-weight="700" fill="#ffffff">Herramientas</text>
+<text x="1156" y="769.0" font-size="13.5" fill="#16262c">• Grabación de uso (en el respaldo)</text>
+<text x="1156" y="791.0" font-size="13.5" fill="#16262c">• Diagnóstico de datos:</text>
+<text x="1170" y="813.0" font-size="13.5" fill="#16262c">huérfanos · dedup reprogramaciones</text>
+<text x="1156" y="835.0" font-size="13.5" fill="#16262c">• Reset total</text>
+<rect x="650.0" y="548.0" width="260" height="84" rx="42" fill="#16262c"/>
+<text x="780" y="584" text-anchor="middle" font-size="19" font-weight="700" fill="#ffffff">Gestión MP 2026</text>
+<text x="780" y="608" text-anchor="middle" font-size="13" fill="#9fb0ab">centro de control operacional</text>
+<text x="780" y="1156" text-anchor="middle" font-size="12" fill="#8b958f">~1.000 equipos · MP preventiva, correctiva, pendientes y reprogramaciones · la app lee el .xlsm, nunca lo escribe</text>
+</svg>
